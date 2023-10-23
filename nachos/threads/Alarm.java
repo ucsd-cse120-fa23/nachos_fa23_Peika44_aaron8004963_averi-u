@@ -70,16 +70,16 @@ public class Alarm {
 		// while (wakeTime > Machine.timer().getTime())
 		// 	KThread.yield();
 
-		boolean currentStatus = Machine.interrupt().disable();
+		boolean current = Machine.interrupt().disable();
 
-		long wakeTime = Machine.timer().getTime() + x;
+		long wakeT = Machine.timer().getTime() + x;
 
 		KThread currentThread = KThread.currentThread();
-		PriorThread priorThread = new PriorThread(currentThread, wakeTime);
+		PriorThread priorThread = new PriorThread(currentThread, wakeT);
         waitQueue.add(priorThread);
         currentThread.sleep();
 
-        Machine.interrupt().restore(currentStatus);
+        Machine.interrupt().restore(current);
 
 	}
 
