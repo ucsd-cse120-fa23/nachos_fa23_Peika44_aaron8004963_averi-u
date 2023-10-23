@@ -6,10 +6,15 @@ import nachos.machine.*;
  * A <i>Rendezvous</i> allows threads to synchronously exchange values.
  */
 public class Rendezvous {
+
+    private static Lock lock;
+    private static Condition cv;
+
     /**
      * Allocate a new Rendezvous.
      */
     public Rendezvous () {
+
     }
 
     /**
@@ -29,6 +34,24 @@ public class Rendezvous {
      * @param value the integer to exchange.
      */
     public int exchange (int tag, int value) {
-	return 0;
+
+        if(lock == null){
+            instanceValue = value; // need to change, get value from A
+            lock = new Lock();
+            cv = new Condition(lock);
+            lock.acquire();
+            cv.sleep();
+        }
+        else{
+            instanceValue = value; // need to change, get value from B
+            //assign value to B
+
+            cv.wake();
+            lock.release();
+        }
+        
+     int instanceValue;
+
+	    return 0;
     }
 }
