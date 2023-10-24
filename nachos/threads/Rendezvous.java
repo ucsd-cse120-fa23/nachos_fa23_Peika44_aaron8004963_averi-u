@@ -7,8 +7,9 @@ import nachos.machine.*;
  */
 public class Rendezvous {
 
-    private static Lock lock;
-    private static Condition cv;
+    private static Lock lock = new Lock();
+    private static Condition cv = new Condition(lock);
+    private int instanceValue = 0;
 
     /**
      * Allocate a new Rendezvous.
@@ -34,24 +35,66 @@ public class Rendezvous {
      * @param value the integer to exchange.
      */
     public int exchange (int tag, int value) {
-
-        if(lock == null){
-            instanceValue = value; // need to change, get value from A
-            lock = new Lock();
-            cv = new Condition(lock);
-            lock.acquire();
-            cv.sleep();
+        lock.acquire();
+        try{
+            if(instanceValue == 0){
+                instanceValue = value;
+                cv.sleep();
+                return instanceValue;
+            }
+            else{
+                //assign value to B
+                int v = instanceValue;
+                instanceValue = value;
+                cv.wake();
+                return v;
+            }
         }
-        else{
-            instanceValue = value; // need to change, get value from B
-            //assign value to B
-
-            cv.wake();
+        finally{
             lock.release();
         }
-        
-     int instanceValue;
+	    //return 0;
+    }
+       // Place Rendezvous test code inside of the Rendezvous class.
 
-	    return 0;
+    public static void rendezTest1() {
+        final Rendezvous r = new Rendezvous();
+
+        KThread t1 = new KThread( new Runnable () {
+            public void run() {
+                int tag = 0;
+                int send = -1;
+
+                System.out.println ("Thread " + KThread.currentThread().getName() + " exchanging " + send);
+                int recv = r.exchange (tag, send);
+                //Lib.assertTrue (recv == 1, "Was expecting " + 1 + " but received " + recv);
+                System.out.println ("Thread " + KThread.currentThread().getName() + " received " + recv);
+            }
+        });
+        t1.setName("t1");
+        KThread t2 = new KThread( new Runnable () {
+            public void run() {
+                int tag = 0;
+                int send = 1;
+
+                System.out.println ("Thread " + KThread.currentThread().getName() + " exchanging " + send);
+                int recv = r.exchange (tag, send);
+                //Lib.assertTrue (recv == -1, "Was expecting " + -1 + " but received " + recv);
+                System.out.println ("Thread " + KThread.currentThread().getName() + " received " + recv);
+            }
+        });
+        t2.setName("t2");
+
+        t1.fork(); t2.fork();
+        // assumes join is implemented correctly
+        // ls
+        t1.join(); t2.join();
+    }
+
+        // Invoke Rendezvous.selfTest() from ThreadedKernel.selfTest()
+
+    public static void selfTest() {
+        // place calls to your Rendezvous tests that you implement here
+        rendezTest1();
     }
 }
