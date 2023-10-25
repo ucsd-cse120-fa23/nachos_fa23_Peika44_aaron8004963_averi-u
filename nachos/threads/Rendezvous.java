@@ -1,21 +1,84 @@
 package nachos.threads;
 
+// import java.util.ArrayList;
+// import java.util.Vector;
+
 import nachos.machine.*;
+import java.util.Map;
+import java.util.HashMap;
 
 /**
  * A <i>Rendezvous</i> allows threads to synchronously exchange values.
  */
 public class Rendezvous {
 
-    private static Lock lock = new Lock();
-    private static Condition cv = new Condition(lock);
-    private int instanceValue = 0;
+    private static Lock lock;
+    private static Condition cv;
+    private int instanceValue;
+    private Rendezvoustag tags;
 
+    private class Pair<K, V> {
+        private K key;
+        private V value;
+    
+        public Pair(K key, V value) {
+            this.key = key;
+            this.value = value;
+        }
+    
+        public K getKey() {
+            return key;
+        }
+    
+        public V getValue() {
+            return value;
+        }
+
+        public void setValue(V value){
+            this.value = value;
+        }
+
+    }
+
+    private class Rendezvoustag{
+        // private Map<Integer, Pair<Integer, Condition>> tags;
+        // //private int value;
+
+        Rendezvoustag(){
+            //tags = new HashMap<Integer, Pair<Integer, Condition>>();
+            //this.value = value;
+            tags = new HashMap<Integer, Pair<Integer,Integer>>();
+        }
+        
+        // public Map<Integer, Pair<Integer, Condition>> getTags(){
+        //     return this.tags;
+        // }
+
+        private Map<Integer, Pair<Integer,Integer>> tags;
+        
+        // public void addTag(int tag, int value, Condition cv ){
+        //     this.tags.put(tag, new Pair<Integer, Condition>(value, cv));
+        // }
+
+        public Map<Integer, Pair<Integer,Integer>> getTags(){
+            return this.tags;
+        }
+
+        public void addTag(int tag, int value, int lastValue){
+            this.tags.put(tag, new Pair<Integer, Integer>(value, lastValue));
+        }
+
+        public void deleteTag(int tag){
+            this.tags.remove(tag);
+        }
+    }
     /**
      * Allocate a new Rendezvous.
      */
     public Rendezvous () {
-
+        lock = new Lock();
+        cv = new Condition(lock);
+        tags = new Rendezvoustag();
     }
 
     /**
@@ -37,25 +100,46 @@ public class Rendezvous {
     public int exchange (int tag, int value) {
         lock.acquire();
         try{
-            if(instanceValue == 0){
-                instanceValue = value;
-                cv.sleep();
-                return instanceValue;
-            }
-            else{
-                //assign value to B
-                int v = instanceValue;
-                instanceValue = value;
+            if(tags.getTags().containsKey(tag)){
+                //int v = tags.getTags().get(tag).getKey();
+                
+                //cv = tags.getTags().get(tag).getValue();
+                
+                int v = tags.getTags().get(tag).getKey();
+
+
+                tags.getTags().get(tag).setValue(value);
+
+                //tags.deleteTag(tag);
+                System.out.println( KThread.currentThread().getName());
                 cv.wake();
+                System.out.println('0');
                 return v;
             }
+            else{
+                // cv = new Condition(lock);
+                // tags.addTag(tag, value, cv);
+                
+
+                //instanceValue = value;
+
+                tags.addTag(tag, value, value);
+
+                System.out.println('2');
+                cv.sleep();
+                System.out.println('1');
+                int instance = tags.getTags().get(tag).getValue();
+                tags.deleteTag(tag);
+                return instance;  
+            }
+
         }
         finally{
             lock.release();
         }
-	    //return 0;
     }
-       // Place Rendezvous test code inside of the Rendezvous class.
+    
+    // Place Rendezvous test code inside of the Rendezvous class.
 
     public static void rendezTest1() {
         final Rendezvous r = new Rendezvous();
@@ -67,8 +151,8 @@ public class Rendezvous {
 
                 System.out.println ("Thread " + KThread.currentThread().getName() + " exchanging " + send);
                 int recv = r.exchange (tag, send);
-                //Lib.assertTrue (recv == 1, "Was expecting " + 1 + " but received " + recv);
-                System.out.println ("Thread " + KThread.currentThread().getName() + " received " + recv);
+                Lib.assertTrue (recv == 1, "Was expecting " + 1 + " but received " + recv);
+                System.out.println ("Thread " + KThread.currentThread().getName() + " received " + recv + " with tag " + tag);
             }
         });
         t1.setName("t1");
@@ -79,8 +163,8 @@ public class Rendezvous {
 
                 System.out.println ("Thread " + KThread.currentThread().getName() + " exchanging " + send);
                 int recv = r.exchange (tag, send);
-                //Lib.assertTrue (recv == -1, "Was expecting " + -1 + " but received " + recv);
-                System.out.println ("Thread " + KThread.currentThread().getName() + " received " + recv);
+                Lib.assertTrue (recv == -1, "Was expecting " + -1 + " but received " + recv);
+                System.out.println ("Thread " + KThread.currentThread().getName() + " received " + recv + " with tag " + tag);
             }
         });
         t2.setName("t2");
@@ -91,10 +175,71 @@ public class Rendezvous {
         t1.join(); t2.join();
     }
 
+    public static void rendezTest2() {
+        final Rendezvous r = new Rendezvous();
+
+        KThread t1 = new KThread( new Runnable () {
+            public void run() {
+                int tag = 1;
+                int send = -1;
+
+                System.out.println ("Thread " + KThread.currentThread().getName() + " exchanging " + send);
+                int recv = r.exchange (tag, send);
+                //Lib.assertTrue (recv == 1, "Was expecting " + 1 + " but received " + recv);
+                System.out.println ("Thread " + KThread.currentThread().getName() + " received " + recv + " with tag " + tag);
+            }
+        });
+        t1.setName("t1");
+        KThread t2 = new KThread( new Runnable () {
+            public void run() {
+                int tag = 0;
+                int send = 0;
+
+                System.out.println ("Thread " + KThread.currentThread().getName() + " exchanging " + send);
+                int recv = r.exchange (tag, send);
+                //Lib.assertTrue (recv == 5, "Was expecting " + 5 + " but received " + recv);
+                System.out.println ("Thread " + KThread.currentThread().getName() + " received " + recv + " with tag " + tag);
+            }
+        });
+        t2.setName("t2");
+
+        KThread t3 = new KThread( new Runnable () {
+            public void run() {
+                int tag = 1;
+                int send = 1;
+
+                System.out.println ("Thread " + KThread.currentThread().getName() + " exchanging " + send);
+                int recv = r.exchange (tag, send);
+                //Lib.assertTrue (recv == -1, "Was expecting " + -1 + " but received " + recv);
+                System.out.println ("Thread " + KThread.currentThread().getName() + " received " + recv + " with tag " + tag);
+            }
+        });
+        t3.setName("t3");
+
+        KThread t4 = new KThread( new Runnable () {
+            public void run() {
+                int tag = 0;
+                int send = 5;
+
+                System.out.println ("Thread " + KThread.currentThread().getName() + " exchanging " + send);
+                int recv = r.exchange (tag, send);
+                //Lib.assertTrue (recv == 0, "Was expecting " + 0 + " but received " + recv);
+                System.out.println ("Thread " + KThread.currentThread().getName() + " received " + recv + " with tag " + tag);
+            }
+        });
+        t4.setName("t4");
+
+        t1.fork(); t2.fork(); t3.fork(); t4.fork();
+        // assumes join is implemented correctly
+        // ls
+        t1.join(); t2.join(); t3.join(); t4.join();
+    }
+
         // Invoke Rendezvous.selfTest() from ThreadedKernel.selfTest()
 
     public static void selfTest() {
         // place calls to your Rendezvous tests that you implement here
-        rendezTest1();
+        //rendezTest1();
+        rendezTest2();
     }
 }
