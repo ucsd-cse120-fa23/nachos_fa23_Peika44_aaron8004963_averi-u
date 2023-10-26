@@ -282,10 +282,22 @@ public class KThread {
 	 */
 	public void join() {
 		Lib.debug(dbgThread, "Joining to thread: " + toString());
-
+		
 		Lib.assertTrue(this != currentThread);
-
+		
+		boolean intStatus = Machine.interrupt().disable();
+		int looped = 0;
+		while (this.status != statusFinished) {
+			looped ++;
+			// The target thread is not finished, so we'll yield the CPU to allow other threads to run.
+			System.out.println("/---"+ currentThread + " yields to child: "+ this + "---/");
+			currentThread.yield();
+		}
+		
+		Machine.interrupt().restore(intStatus);
 	}
+	
+	
 
 	/**
 	 * Create the idle thread. Whenever there are no threads ready to be run,
@@ -407,6 +419,68 @@ public class KThread {
 		private int which;
 	}
 
+    // Place Join test code in the KThread class and invoke test methods
+    // from KThread.selfTest().
+    
+    // Simple test for the situation where the child finishes before
+    // the parent calls join on it.
+    
+    private static void joinTest1 () {
+		KThread child1 = new KThread( new Runnable () {
+			public void run() {
+				System.out.println("I (heart) Nachos!");
+			}
+			});
+		child1.setName("child1").fork();
+	
+		// We want the child to finish before we call join.  Although
+		// our solutions to the problems cannot busy wait, our test
+		// programs can!
+	
+		for (int i = 0; i < 5; i++) {
+			System.out.println ("busy...");
+			KThread.currentThread().yield();
+		}
+		
+		child1.join();
+		System.out.println("After joining, child1 should be finished.");
+		System.out.println("is it? " + (child1.status == statusFinished));
+		Lib.assertTrue((child1.status == statusFinished), " Expected child1 to be finished.");
+	}
+
+	private static void joinTest2() {
+
+		KThread threadC = new KThread(new Runnable() {
+			public void run() {
+				System.out.println("Thread C: Started");
+				System.out.println("Thread C: Finished");
+			}
+		});
+
+		KThread threadB = new KThread(new Runnable() {
+			public void run() {
+				System.out.println("Thread B: Started");
+				System.out.println("Thread B: Joining with Thread C");
+				threadC.join();
+				System.out.println("Thread B: Resumed after joining with Thread C");
+				System.out.println("Thread B: Finished");
+			}
+		});
+
+		// Thread A
+		KThread threadA = new KThread(new Runnable() {
+			public void run() {
+				System.out.println("Thread A: Started");
+				System.out.println("Thread A: Joining with Thread B");
+				threadB.join();
+				System.out.println("Thread A: Resumed after joining with Thread B");	
+			}
+		});
+		threadA.setName("Thread A").fork();	
+		threadB.setName("Thread B").fork();
+		threadC.setName("Thread C").fork();
+	}
+
 	/**
 	 * Tests whether this module is working.
 	 */
@@ -415,6 +489,8 @@ public class KThread {
 
 		new KThread(new PingTest(1)).setName("forked thread").fork();
 		new PingTest(0).run();
+		joinTest1();
+		joinTest2();
 	}
 
 	private static final char dbgThread = 't';
