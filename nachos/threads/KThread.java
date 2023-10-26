@@ -520,12 +520,10 @@ public class KThread {
 				System.out.println("Thread E: Resumed after joining with Thread Q");
 			}
 		});
-		threadQ.setName("Thread Q").fork();
 
 		threadE.setName("Thread E").fork();
 		threadW.setName("Thread W").fork();
-
-
+		threadQ.setName("Thread Q").fork();
 	}
 	
 
