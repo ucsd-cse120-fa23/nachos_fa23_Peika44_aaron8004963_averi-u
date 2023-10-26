@@ -109,13 +109,56 @@ public class Alarm {
 			System.out.println ("alarmTest1: waited for " + (t1 - t0) + " ticks");
 		}
 		}
+
+		public static void alarmTest2() {
+			int durations[] = { 1000, 2000, 3000, 4000, 5000 };
+			long t0, t1;
+		
+			for (int d : durations) {
+				t0 = Machine.timer().getTime();
+				ThreadedKernel.alarm.waitUntil(d);
+				t1 = Machine.timer().getTime();
+				System.out.println("alarmTest2: waited for " + (t1 - t0) + " ticks");
+			}
+		}
+
+		public static void alarmTest3() {
+			KThread thread1 = new KThread(new Runnable() {
+				public void run() {
+					long startTime = Machine.timer().getTime();
+					ThreadedKernel.alarm.waitUntil(2000);
+					long wakeUpTime = Machine.timer().getTime();
+					System.out.println("alarmTest3: Thread_1 waited for " + (wakeUpTime - startTime) + "(Expected 2000)" + " ticks");
+				}
+			});
+		
+			KThread thread2 = new KThread(new Runnable() {
+				public void run() {
+					long startTime = Machine.timer().getTime();
+					ThreadedKernel.alarm.waitUntil(3000);
+					long wakeUpTime = Machine.timer().getTime();
+					System.out.println("alarmTest3: Thread_2 waited for " + (wakeUpTime - startTime) + "(Expected 3000)" + " ticks");
+				}
+			});
+		
+			thread1.setName("alarmTest3_Thread_1");
+			thread2.setName("alarmTest3_Thread_2");
+		
+			thread1.fork();
+			thread2.fork();
+		
+			thread1.join();
+			thread2.join();
+		}
+		
 	
 		// Implement more test methods here ...
 	
 		// Invoke Alarm.selfTest() from ThreadedKernel.selfTest()
 	public static void selfTest() {
 		alarmTest1();
-	
+		alarmTest2();
+		alarmTest3();
 		// Invoke your other test methods here ...
 	}
 
