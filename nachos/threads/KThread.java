@@ -286,9 +286,7 @@ public class KThread {
 		Lib.assertTrue(this != currentThread);
 		
 		boolean intStatus = Machine.interrupt().disable();
-		int looped = 0;
 		while (this.status != statusFinished) {
-			looped ++;
 			// The target thread is not finished, so we'll yield the CPU to allow other threads to run.
 			System.out.println("/---"+ currentThread + " yields to child: "+ this + "---/");
 			currentThread.yield();
@@ -489,7 +487,15 @@ public class KThread {
 
 		new KThread(new PingTest(1)).setName("forked thread").fork();
 		new PingTest(0).run();
+		System.out.println("\n" +
+			"-----------------------------joinTest1()---------------------------------------"
+			);
+
 		joinTest1();
+
+		System.out.println("\n" +
+			"-----------------------------joinTest2()---------------------------------------"
+			);
 		joinTest2();
 	}
 
