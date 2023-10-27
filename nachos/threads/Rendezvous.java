@@ -1,8 +1,5 @@
 package nachos.threads;
 
-// import java.util.ArrayList;
-// import java.util.Vector;
-
 import nachos.machine.*;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -14,72 +11,10 @@ import java.util.HashMap;
 public class Rendezvous {
 
     private static Lock lock;
-    private static Condition notEmpty;
-    private static Condition notFull;
     private boolean inExchange;
-    //private int instanceValue;
     private Rendezvoustag tags;
     private Condition cv;
 
-    /*
-     * version with integer and pair of integer
-     * store data, value, and value
-     */
-    // private class Pair<K, V> {
-    //     private K key;
-    //     private V value;
-    
-    //     public Pair(K key, V value) {
-    //         this.key = key;
-    //         this.value = value;
-    //     }
-    
-    //     public K getKey() {
-    //         return key;
-    //     }
-    
-    //     public V getValue() {
-    //         return value;
-    //     }
-
-    //     public void setValue(V value){
-    //         this.value = value;
-    //     }
-
-    // }
-
-    // private class Rendezvoustag{
-    //     // private Map<Integer, Pair<Integer, Condition>> tags;
-    //     // //private int value;
-
-    //     Rendezvoustag(){
-    //         //tags = new HashMap<Integer, Pair<Integer, Condition>>();
-    //         //this.value = value;
-    //         tags = new HashMap<Integer, Pair<Integer,Integer>>();
-    //     }
-        
-    //     // public Map<Integer, Pair<Integer, Condition>> getTags(){
-    //     //     return this.tags;
-    //     // }
-
-    //     private Map<Integer, Pair<Integer,Integer>> tags;
-        
-    //     // public void addTag(int tag, int value, Condition cv ){
-    //     //     this.tags.put(tag, new Pair<Integer, Condition>(value, cv));
-    //     // }
-
-    //     public Map<Integer, Pair<Integer,Integer>> getTags(){
-    //         return this.tags;
-    //     }
-
-    //     public void addTag(int tag, int value, int lastValue){
-    //         this.tags.put(tag, new Pair<Integer, Integer>(value, lastValue));
-    //     }
-
-    //     public void deleteTag(int tag){
-    //         this.tags.remove(tag);
-    //     }
-    // }
 
     /*
      * new version tried to block other threads
@@ -87,41 +22,11 @@ public class Rendezvous {
      */
 
      private class Rendezvoustag{
-    //     private int tag;
-    //     private int value;
-
-    //     //constructor for Rendezvoustag
-    //     Rendezvoustag(){
-
-    //     }
-
-    //     public int getTag(){
-    //         return this.tag;
-    //     }
-
-    //     public int getValue(){
-    //         return this.value;
-    //     }
-
-    //     public void setTag(int tag){
-    //         this.tag = tag;
-    //     }
-
-    //     public void setValue(int value){
-    //         this.value = value;
-    //     }
-    //  }
-        private Map<Integer,Integer> tags;
-        private Map<Integer,Condition> conditions;
 
         Rendezvoustag(){
             tags = new HashMap<Integer,Integer>();
             conditions = new HashMap<Integer, Condition>();
         }
-
-        // public Map<Integer,Integer> getTags(){
-        //     return this.tags;
-        // }
 
         public Condition getCondition(int tag){
             return this.conditions.get(tag);
@@ -146,6 +51,10 @@ public class Rendezvous {
         public boolean containsTag(int tag){
             return this.tags.containsKey(tag);
         }
+
+        private Map<Integer,Integer> tags;
+        private Map<Integer,Condition> conditions;
+
     }
 
     /**
@@ -153,8 +62,6 @@ public class Rendezvous {
      */
     public Rendezvous () {
         lock = new Lock();
-        notEmpty = new Condition(lock);
-        notFull = new Condition(lock);
         cv = new Condition(lock);
         lock.acquire();
         tags = new Rendezvoustag();
@@ -193,7 +100,6 @@ public class Rendezvous {
                 // }
                 cv.sleep();
                 int instance = tags.getValue(tag);
-                //System.out.println("instance: " + instance);
                 tags.deleteTag(tag);
                 inExchange = false;
                 cv.wakeAll();
@@ -205,7 +111,6 @@ public class Rendezvous {
                 tags.addTag(tag, value);
                 cv = tags.getCondition(tag);
                 cv.wake();
-                //System.out.println("value: " + v);
                 return v;
             }
         }
@@ -907,12 +812,12 @@ public class Rendezvous {
 
     public static void selfTest() {
         // place calls to your Rendezvous tests that you implement here
-        rendezTest1();
+        //rendezTest1();
         //rendezTest2();
         //rendezTest3();
         //rendezTest4();
         //rendezTest5();
         //rendezTest6();
-        //rendezTest7();
+        rendezTest7();
     }
 }
