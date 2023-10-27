@@ -291,11 +291,13 @@ public class KThread {
 		Lib.debug(dbgThread, "Joining to thread: " + toString());
 		
 		Lib.assertTrue(this != currentThread);
+		Lib.assertTrue(this.joined != true);
 
 		boolean intStatus = Machine.interrupt().disable();
 		if (this.status != statusFinished) {
 			// The target thread is not finished, so we'll yield the CPU to allow other threads to run.
 			System.out.println("/---"+ currentThread + " yields to child: "+ this + "---/");
+			this.joined = true;
 			this.parentThread = currentThread;
 			currentThread.sleep();
 		}
@@ -578,6 +580,37 @@ public class KThread {
 		threadQ.setName("Thread Q").fork();
 		threadE.setName("Thread E").fork();
 	}
+
+	private static void joinTest5() {
+			KThread threadQ = new KThread(new Runnable() {
+				public void run() {
+					System.out.println("Thread Q: Started");
+					System.out.println("Thread Q: Finished");
+				}
+			});
+		
+			KThread threadW = new KThread(new Runnable() {
+				public void run() {
+					System.out.println("Thread W: Started");
+					threadQ.join();
+					System.out.println("Thread W: Finished");
+				}
+			});
+	
+			KThread threadE = new KThread(new Runnable() {
+				public void run() {
+					System.out.println("Thread E: Started");
+					System.out.println("Thread E: Joining with Thread Q");
+					threadQ.join(); // assert false
+					System.out.println("cannot reach here");
+				}
+			});
+	
+			
+			threadW.setName("Thread W").fork();
+			threadQ.setName("Thread Q").fork();
+			threadE.setName("Thread E").fork();
+		}
 	
 
 	/**
@@ -622,6 +655,7 @@ public class KThread {
 			"-----------------------------joinTest5()---------------------------------------"
 			);
 		joinTest5();
+
 	}
 	
 
@@ -676,5 +710,5 @@ public class KThread {
 
 	private static KThread idleThread = null;
 	
-	private ThreadQueue joinQueue = null;
+	private boolean joined = false;
 }

@@ -35,13 +35,16 @@ public class Condition2 {
 	 */
 	public void sleep() {
 		Lib.assertTrue(conditionLock.isHeldByCurrentThread());
-
 		boolean intStatus = Machine.interrupt().disable();
+
 		conditionLock.release();
+
 		System.out.println("go sleep: " + KThread.currentThread().getName());
-    waitQueue.add(KThread.currentThread());
+        waitQueue.add(KThread.currentThread());
 		KThread.sleep();
+
 		conditionLock.acquire();
+
 		Machine.interrupt().restore(intStatus);
 
 	}
@@ -54,13 +57,19 @@ public class Condition2 {
 		Lib.assertTrue(conditionLock.isHeldByCurrentThread());
 
 		boolean intStatus = Machine.interrupt().disable();
+
 		if (!waitQueue.isEmpty()) {
-			KThread threadToWake = waitQueue.removeFirst();
+			
+            KThread threadToWake = waitQueue.removeFirst();
 			System.out.println(KThread.currentThread().getName() + " wakes up the: " + threadToWake.getName());
-			conditionLock.release();
-			threadToWake.ready();
-			conditionLock.acquire(); 
+			
+            conditionLock.release();
+			
+            threadToWake.ready();
+			
+            conditionLock.acquire(); 
 		}
+
 		Machine.interrupt().restore(intStatus);
 	}
 	
@@ -186,6 +195,21 @@ public class Condition2 {
 
     // Invoke Condition2.selfTest() from ThreadedKernel.selfTest()
 
+	private static void sleepForTest1 () {
+		Lock lock = new Lock();
+		Condition2 cv = new Condition2(lock);
+	
+		lock.acquire();
+		long t0 = Machine.timer().getTime();
+		System.out.println (KThread.currentThread().getName() + " sleeping");
+		// no other thread will wake us up, so we should time out
+		cv.sleepFor(2000);
+		long t1 = Machine.timer().getTime();
+		System.out.println (KThread.currentThread().getName() +
+					" woke up, slept for " + (t1 - t0) + " ticks");
+		lock.release();
+	}
+
     public static void selfTest() {
 		System.out.println("\n" +
 			"-----------------------------InterlockTest()---------------------------------------"
@@ -195,7 +219,12 @@ public class Condition2 {
 			"-----------------------------InterlockTest2()---------------------------------------"
 			);
 		new InterlockTest2();
+		System.out.println("\n" +
+			"-----------------------------sleepForTest1()---------------------------------------"
+			);
+		sleepForTest1();
     }
         private Lock conditionLock;
 		private LinkedList<KThread> waitQueue;
+		
 }
