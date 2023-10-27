@@ -92,7 +92,19 @@ public class Alarm {
 	 * @param thread the thread whose timer should be cancelled.
 	 */
     public boolean cancel(KThread thread) {
-			return false;
+		boolean initStatus = Machine.interrupt().disable();
+		for (PriorThread priorThread : waitQueue) {
+			if (priorThread.thread == thread){ 
+				waitQueue.remove(priorThread);
+				priorThread.thread.ready();
+
+				Machine.interrupt().restore(initStatus);
+				return true;
+			}
+		}
+		
+		Machine.interrupt().restore(initStatus);
+		return false;
 	}
 
 	    // Add Alarm testing code to the Alarm class
