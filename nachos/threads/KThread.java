@@ -291,7 +291,7 @@ public class KThread {
 		Lib.debug(dbgThread, "Joining to thread: " + toString());
 		
 		Lib.assertTrue(this != currentThread);
-		
+
 		boolean intStatus = Machine.interrupt().disable();
 		if (this.status != statusFinished) {
 			// The target thread is not finished, so we'll yield the CPU to allow other threads to run.
@@ -535,6 +535,7 @@ public class KThread {
 
 		new KThread(new PingTest(1)).setName("forked thread").fork();
 		new PingTest(0).run();
+    
 		System.out.println("\n" +
 			"-----------------------------joinTest1()---------------------------------------"
 			);
@@ -555,6 +556,7 @@ public class KThread {
 			);
 		joinTest3();
 	}
+	
 
 	private static final char dbgThread = 't';
 
@@ -606,4 +608,6 @@ public class KThread {
 	private static KThread toBeDestroyed = null;
 
 	private static KThread idleThread = null;
+	
+	private ThreadQueue joinQueue = null;
 }
