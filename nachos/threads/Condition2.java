@@ -35,13 +35,16 @@ public class Condition2 {
 	 */
 	public void sleep() {
 		Lib.assertTrue(conditionLock.isHeldByCurrentThread());
-
 		boolean intStatus = Machine.interrupt().disable();
+
 		conditionLock.release();
+
 		System.out.println("go sleep: " + KThread.currentThread().getName());
-    waitQueue.add(KThread.currentThread());
+        waitQueue.add(KThread.currentThread());
 		KThread.sleep();
+
 		conditionLock.acquire();
+
 		Machine.interrupt().restore(intStatus);
 
 	}
@@ -54,13 +57,19 @@ public class Condition2 {
 		Lib.assertTrue(conditionLock.isHeldByCurrentThread());
 
 		boolean intStatus = Machine.interrupt().disable();
+
 		if (!waitQueue.isEmpty()) {
-			KThread threadToWake = waitQueue.removeFirst();
+			
+            KThread threadToWake = waitQueue.removeFirst();
 			System.out.println(KThread.currentThread().getName() + " wakes up the: " + threadToWake.getName());
-			conditionLock.release();
-			threadToWake.ready();
-			conditionLock.acquire(); 
+			
+            conditionLock.release();
+			
+            threadToWake.ready();
+			
+            conditionLock.acquire(); 
 		}
+
 		Machine.interrupt().restore(intStatus);
 	}
 	

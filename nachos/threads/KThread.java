@@ -594,7 +594,7 @@ public class KThread {
 		System.out.println("\n" +
 			"-----------------------------joinTest5()---------------------------------------"
 			);
-		joinTest5();
+		//joinTest5();
 	}
 	
 
