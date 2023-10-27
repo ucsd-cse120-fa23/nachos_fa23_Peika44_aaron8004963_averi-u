@@ -589,12 +589,12 @@ public class KThread {
 			);
 		joinTest3();
 
-		new KThread(new PingTest(1)).setName("forked thread").fork();
-		new PingTest(0).run();
-		System.out.println("\n" +
-			"-----------------------------joinTest5()---------------------------------------"
-			);
-		//joinTest5();
+		// new KThread(new PingTest(1)).setName("forked thread").fork();
+		// new PingTest(0).run();
+		// System.out.println("\n" +
+		// 	"-----------------------------joinTest5()---------------------------------------"
+		// 	);
+		// joinTest5();
 	}
 	
 
