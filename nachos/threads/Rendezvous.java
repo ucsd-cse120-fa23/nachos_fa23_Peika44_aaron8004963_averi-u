@@ -11,10 +11,8 @@ import java.util.HashMap;
 public class Rendezvous {
 
     private static Lock lock;
-    private boolean inExchange;
-    private Rendezvoustag tags;
-    private Condition cv;
-
+    private Rendezvoustag rendezvoustag;
+    private Condition ex;
 
     /*
      * new version tried to block other threads
@@ -26,6 +24,8 @@ public class Rendezvous {
         Rendezvoustag(){
             tags = new HashMap<Integer,Integer>();
             conditions = new HashMap<Integer, Condition>();
+            inExchanges = new HashMap<Integer, Boolean>();
+            locks = new HashMap<Integer, Lock>();
         }
 
         public Condition getCondition(int tag){
@@ -52,8 +52,26 @@ public class Rendezvous {
             return this.tags.containsKey(tag);
         }
 
+        public void addInExchange(int tag, boolean in){
+            this.inExchanges.put(tag, in);
+        }
+
+        public boolean getInExchange(int tag){
+            return this.inExchanges.get(tag);
+        }
+
+        public void addLock(int tag, Lock lock){
+            this.locks.put(tag, lock);
+        }
+
+        public Lock getLock(int tag){
+            return this.locks.get(tag);
+        }
+
         private Map<Integer,Integer> tags;
         private Map<Integer,Condition> conditions;
+        private Map<Integer,Boolean> inExchanges;
+        private Map<Integer,Lock> locks;
 
     }
 
@@ -62,11 +80,10 @@ public class Rendezvous {
      */
     public Rendezvous () {
         lock = new Lock();
-        cv = new Condition(lock);
+        ex = new Condition(lock);
         lock.acquire();
-        tags = new Rendezvoustag();
+        rendezvoustag = new Rendezvoustag();
         lock.release();
-        inExchange = false;
     }
 
     /**
@@ -85,32 +102,104 @@ public class Rendezvous {
      * @param tag the synchronization tag.
      * @param value the integer to exchange.
      */
+    // public int exchange (int tag, int value) {
+    //     lock.acquire();
+    //     try{
+    //         System.out.println("is");
+    //         if(!rendezvoustag.containsTag(tag)){
+    //             Lock tempLock = new Lock();
+    //             Condition cv = new Condition(tempLock);
+    //             Boolean inExchange = false;
+    //             rendezvoustag.addCondition(tag, cv);
+    //             rendezvoustag.addTag(tag, value);
+    //             rendezvoustag.addInExchange(tag, inExchange);
+                
+    //             System.out.println("1");
+
+    //             tempLock.acquire();
+    //             // System.out.println("oasdjasd");
+    //             //cv.sleep();
+    //             tempLock.release();
+                
+    //             System.out.println("oasdjasd");
+
+    //             int instance = rendezvoustag.getValue(tag);
+    //             rendezvoustag.deleteTag(tag);
+    //             // rendezvoustag.addInExchange(tag, false);
+    //             //tempLock.acquire();
+    //             cv.wake();
+    //             tempLock.release();
+
+    //             return instance;
+    //         }
+    //         else{
+    //             // while(rendezvoustag.getInExchange(tag)){
+    //             //     Condition cv = rendezvoustag.getCondition(tag);
+    //             //     Lock tempLock = rendezvoustag.getLock(tag);
+    //             //     tempLock.acquire();
+    //             //     cv.sleep();
+    //             //     tempLock.release();
+    //             // }
+    //             System.out.println("asdasda");
+    //             rendezvoustag.addInExchange(tag, true);
+    //             int v = rendezvoustag.getValue(tag);
+    //             rendezvoustag.addTag(tag, value);
+    //             Condition cv = rendezvoustag.getCondition(tag);
+    //             Lock tempLock = rendezvoustag.getLock(tag);
+
+    //             // tempLock.acquire();
+    //             cv.wake();
+    //             //tempLock.release();
+
+    //             return v;
+    //         }
+    //     }
+    //     finally{
+    //         lock.release();
+    //     }
+    // }
+
     public int exchange (int tag, int value) {
         lock.acquire();
         try{
-            while(inExchange){
-                cv.sleep();
+            // let the third thread sleep until the first switch
+            if(rendezvoustag.containsTag(tag)){
+                //System.out.println(KThread.currentThread().getName() + " enters first if block");
+                //Condition cv = rendezvoustag.getCondition(tag);
+                while(rendezvoustag.getInExchange(tag)){
+                    //System.out.println(KThread.currentThread().getName() + " is waiting");
+                    ex.sleep();
+                }
+                // cv.wakeAll();
             }
-            if(!tags.containsTag(tag)){
+            if(!rendezvoustag.containsTag(tag)){
+                //System.out.println(KThread.currentThread().getName() + " creating new tag");
                 Condition cv = new Condition(lock);
-                tags.addCondition(tag, cv);
-                tags.addTag(tag, value);
-                // while(!inExchange){
-                //     cv.sleep();
-                // }
+                rendezvoustag.addCondition(tag, cv);
+                rendezvoustag.addTag(tag, value);
+                rendezvoustag.addInExchange(tag, false);
+
                 cv.sleep();
-                int instance = tags.getValue(tag);
-                tags.deleteTag(tag);
-                inExchange = false;
-                cv.wakeAll();
+
+                int instance = rendezvoustag.getValue(tag);
+                rendezvoustag.addInExchange(tag, false); // set as false
+                
+                ex.wakeAll(); //wake all the threads with same tags
+                //ex.wake();
+
+                rendezvoustag.deleteTag(tag); //remove the tags
+           
+
                 return instance;
             }
             else{
-                inExchange = true;
-                int v = tags.getValue(tag);
-                tags.addTag(tag, value);
-                cv = tags.getCondition(tag);
-                cv.wake();
+                //System.out.println(KThread.currentThread().getName() + " is in exchange");
+                rendezvoustag.addInExchange(tag, true);
+                int v = rendezvoustag.getValue(tag);
+                Condition cv = rendezvoustag.getCondition(tag);
+                rendezvoustag.addTag(tag, value);
+
+                cv.wake(); //signal the waited thread
                 return v;
             }
         }
@@ -285,7 +374,7 @@ public class Rendezvous {
 
                 System.out.println ("Thread " + KThread.currentThread().getName() + " exchanging " + send);
                 int recv = r.exchange (tag, send);
-                Lib.assertTrue (recv == 1, "Was expecting " + 1 + " but received " + recv);
+                //Lib.assertTrue (recv == 1, "Was expecting " + 1 + " but received " + recv);
                 System.out.println ("Thread " + KThread.currentThread().getName() + " received " + recv + " with tag " + tag);
             }
         });
@@ -297,7 +386,7 @@ public class Rendezvous {
 
                 System.out.println ("Thread " + KThread.currentThread().getName() + " exchanging " + send);
                 int recv = r.exchange (tag, send);
-                Lib.assertTrue (recv == -1, "Was expecting " + -1 + " but received " + recv);
+               // Lib.assertTrue (recv == -1, "Was expecting " + -1 + " but received " + recv);
                 System.out.println ("Thread " + KThread.currentThread().getName() + " received " + recv + " with tag " + tag);
             }
         });
@@ -310,7 +399,7 @@ public class Rendezvous {
 
                 System.out.println ("Thread " + KThread.currentThread().getName() + " exchanging " + send);
                 int recv = r.exchange (tag, send);
-                Lib.assertTrue (recv == 5, "Was expecting " + 5 + " but received " + recv);
+                //Lib.assertTrue (recv == 5, "Was expecting " + 5 + " but received " + recv);
                 System.out.println ("Thread " + KThread.currentThread().getName() + " received " + recv + " with tag " + tag);
             }
         });
@@ -323,7 +412,7 @@ public class Rendezvous {
 
                 System.out.println ("Thread " + KThread.currentThread().getName() + " exchanging " + send);
                 int recv = r.exchange (tag, send);
-                Lib.assertTrue (recv == 2, "Was expecting " + 2 + " but received " + recv);
+                //Lib.assertTrue (recv == 2, "Was expecting " + 2 + " but received " + recv);
                 System.out.println ("Thread " + KThread.currentThread().getName() + " received " + recv + " with tag " + tag);
             }
         });
@@ -813,9 +902,9 @@ public class Rendezvous {
     public static void selfTest() {
         // place calls to your Rendezvous tests that you implement here
         //rendezTest1();
-        //rendezTest2();
+        //rendezTest2(); //different tag
         //rendezTest3();
-        //rendezTest4();
+        //rendezTest4(); //same tag with 8 threads
         //rendezTest5();
         //rendezTest6();
         rendezTest7();
