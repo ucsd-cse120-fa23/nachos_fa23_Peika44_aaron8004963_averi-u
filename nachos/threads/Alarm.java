@@ -6,25 +6,6 @@ import nachos.machine.*;
 
 import java.util.Comparator;
 
-class PriorThread {
-    public KThread thread;
-    public long priority;
-
-    public PriorThread(KThread t, long p) {
-        thread = t;
-        priority = p;
-    }
-
-    public static class Comp implements Comparator<PriorThread> {
-        public int compare(PriorThread a, PriorThread b) {
-            if (a.priority > b.priority)
-                return 1;
-            else if (a.priority < b.priority)
-                return -1;
-            return 0;
-        }
-    }
-}
 /**
  * Uses the hardware timer to provide preemption, and to allow threads to sleep
  * until a certain time.
@@ -89,23 +70,16 @@ public class Alarm {
 		// while (wakeTime > Machine.timer().getTime())
 		// 	KThread.yield();
 
-		// boolean current = Machine.interrupt().disable();
+		boolean current = Machine.interrupt().disable();
 
-		// long wakeT = Machine.timer().getTime() + x;
+		long wakeT = Machine.timer().getTime() + x;
 
-		// KThread currentThread = KThread.currentThread();
-		// PriorThread priorThread = new PriorThread(currentThread, wakeT);
-        // waitQueue.add(priorThread);
-        // currentThread.sleep();
+		KThread currentThread = KThread.currentThread();
+		PriorThread priorThread = new PriorThread(currentThread, wakeT);
+        waitQueue.add(priorThread);
+        currentThread.sleep();
 
-		boolean intrStatus = Machine.interrupt().disable();
-		long timeToWake = Machine.timer().getTime() + x;
-	
-		PriorThread pt = new PriorThread(KThread.currentThread(), timeToWake);
-		waitQueue.offer(pt);
-		KThread.sleep();
-	  
-		Machine.interrupt().restore(intrStatus);
+        Machine.interrupt().restore(current);
 
 	}
 
@@ -124,9 +98,7 @@ public class Alarm {
 
 	    // Add Alarm testing code to the Alarm class
     
-	// Add Alarm testing code to the Alarm class
-    
-    public static void alarmTest1() {
+	public static void alarmTest1() {
 		int durations[] = {1000, 10*1000, 100*1000};
 		long t0, t1;
 	
@@ -137,22 +109,78 @@ public class Alarm {
 			System.out.println ("alarmTest1: waited for " + (t1 - t0) + " ticks");
 		}
 		}
+
+		public static void alarmTest2() {
+			int durations[] = { 1000, 2000, 3000, 4000, 5000 };
+			long t0, t1;
+		
+			for (int d : durations) {
+				t0 = Machine.timer().getTime();
+				ThreadedKernel.alarm.waitUntil(d);
+				t1 = Machine.timer().getTime();
+				System.out.println("alarmTest2: waited for " + (t1 - t0) + " ticks");
+			}
+		}
+
+		public static void alarmTest3() {
+			KThread thread1 = new KThread(new Runnable() {
+				public void run() {
+					long startTime = Machine.timer().getTime();
+					ThreadedKernel.alarm.waitUntil(2000);
+					long wakeUpTime = Machine.timer().getTime();
+					System.out.println("alarmTest3: Thread_1 waited for " + (wakeUpTime - startTime) + "(Expected 2000)" + " ticks");
+				}
+			});
+		
+			KThread thread2 = new KThread(new Runnable() {
+				public void run() {
+					long startTime = Machine.timer().getTime();
+					ThreadedKernel.alarm.waitUntil(3000);
+					long wakeUpTime = Machine.timer().getTime();
+					System.out.println("alarmTest3: Thread_2 waited for " + (wakeUpTime - startTime) + "(Expected 3000)" + " ticks");
+				}
+			});
+		
+			thread1.setName("alarmTest3_Thread_1");
+			thread2.setName("alarmTest3_Thread_2");
+		
+			thread1.fork();
+			thread2.fork();
+		
+			thread1.join();
+			thread2.join();
+		}
+		
 	
 		// Implement more test methods here ...
 	
-	// Invoke Alarm.selfTest() from ThreadedKernel.selfTest()
+		// Invoke Alarm.selfTest() from ThreadedKernel.selfTest()
 	public static void selfTest() {
 		alarmTest1();
-
-	// Invoke your other test methods here ...
+		alarmTest2();
+		alarmTest3();
+		// Invoke your other test methods here ...
 	}
-	
 
 	private PriorityQueue<PriorThread> waitQueue = new PriorityQueue<>(new PriorThread.Comp());
-
-
 }
 
-// Add Alarm testing code to the Alarm class
-    
+class PriorThread {
+    public KThread thread;
+    public long priority;
 
+    public PriorThread(KThread t, long p) {
+        thread = t;
+        priority = p;
+    }
+
+    public static class Comp implements Comparator<PriorThread> {
+        public int compare(PriorThread a, PriorThread b) {
+            if (a.priority > b.priority)
+                return 1;
+            else if (a.priority < b.priority)
+                return -1;
+            return 0;
+        }
+    }
+}
