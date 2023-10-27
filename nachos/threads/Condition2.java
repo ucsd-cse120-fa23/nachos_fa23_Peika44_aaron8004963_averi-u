@@ -86,20 +86,20 @@ public class Condition2 {
 	 * the lock before <tt>sleep()</tt> returns.
 	 */
         public void sleepFor(long timeout) {
-		Lib.assertTrue(conditionLock.isHeldByCurrentThread());
+			Lib.assertTrue(conditionLock.isHeldByCurrentThread());
 
-		//anw: 
-		boolean currentStatus = Machine.interrupt().disable();
-        conditionLock.release();
+			//anw: 
+			boolean currentStatus = Machine.interrupt().disable();
+			conditionLock.release();
 
-        waitQueue.add(KThread.currentThread());
-        ThreadedKernel.alarm.waitUntil(timeout);
+			waitQueue.add(KThread.currentThread());
+			ThreadedKernel.alarm.waitUntil(timeout);
 
-        waitQueue.remove(KThread.currentThread()); 
-		
-        conditionLock.acquire();
-        Machine.interrupt().restore(currentStatus);
-	}
+			waitQueue.remove(KThread.currentThread()); 
+			
+			conditionLock.acquire();
+			Machine.interrupt().restore(currentStatus);
+		}
 
 	// Place Condition2 testing code in the Condition2 class.
 
