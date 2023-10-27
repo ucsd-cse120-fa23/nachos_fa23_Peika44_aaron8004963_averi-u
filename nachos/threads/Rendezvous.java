@@ -812,12 +812,12 @@ public class Rendezvous {
 
     public static void selfTest() {
         // place calls to your Rendezvous tests that you implement here
-        //rendezTest1();
+        rendezTest1();
         //rendezTest2();
         //rendezTest3();
         //rendezTest4();
         //rendezTest5();
         //rendezTest6();
-        rendezTest7();
+        //rendezTest7();
     }
 }
