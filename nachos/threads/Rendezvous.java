@@ -25,7 +25,6 @@ public class Rendezvous {
             tags = new HashMap<Integer,Integer>();
             conditions = new HashMap<Integer, Condition>();
             inExchanges = new HashMap<Integer, Boolean>();
-            locks = new HashMap<Integer, Lock>();
         }
 
         public Condition getCondition(int tag){
@@ -60,18 +59,9 @@ public class Rendezvous {
             return this.inExchanges.get(tag);
         }
 
-        public void addLock(int tag, Lock lock){
-            this.locks.put(tag, lock);
-        }
-
-        public Lock getLock(int tag){
-            return this.locks.get(tag);
-        }
-
         private Map<Integer,Integer> tags;
         private Map<Integer,Condition> conditions;
         private Map<Integer,Boolean> inExchanges;
-        private Map<Integer,Lock> locks;
 
     }
 
@@ -102,62 +92,6 @@ public class Rendezvous {
      * @param tag the synchronization tag.
      * @param value the integer to exchange.
      */
-    // public int exchange (int tag, int value) {
-    //     lock.acquire();
-    //     try{
-    //         System.out.println("is");
-    //         if(!rendezvoustag.containsTag(tag)){
-    //             Lock tempLock = new Lock();
-    //             Condition cv = new Condition(tempLock);
-    //             Boolean inExchange = false;
-    //             rendezvoustag.addCondition(tag, cv);
-    //             rendezvoustag.addTag(tag, value);
-    //             rendezvoustag.addInExchange(tag, inExchange);
-                
-    //             System.out.println("1");
-
-    //             tempLock.acquire();
-    //             // System.out.println("oasdjasd");
-    //             //cv.sleep();
-    //             tempLock.release();
-                
-    //             System.out.println("oasdjasd");
-
-    //             int instance = rendezvoustag.getValue(tag);
-    //             rendezvoustag.deleteTag(tag);
-    //             // rendezvoustag.addInExchange(tag, false);
-    //             //tempLock.acquire();
-    //             cv.wake();
-    //             tempLock.release();
-
-    //             return instance;
-    //         }
-    //         else{
-    //             // while(rendezvoustag.getInExchange(tag)){
-    //             //     Condition cv = rendezvoustag.getCondition(tag);
-    //             //     Lock tempLock = rendezvoustag.getLock(tag);
-    //             //     tempLock.acquire();
-    //             //     cv.sleep();
-    //             //     tempLock.release();
-    //             // }
-    //             System.out.println("asdasda");
-    //             rendezvoustag.addInExchange(tag, true);
-    //             int v = rendezvoustag.getValue(tag);
-    //             rendezvoustag.addTag(tag, value);
-    //             Condition cv = rendezvoustag.getCondition(tag);
-    //             Lock tempLock = rendezvoustag.getLock(tag);
-
-    //             // tempLock.acquire();
-    //             cv.wake();
-    //             //tempLock.release();
-
-    //             return v;
-    //         }
-    //     }
-    //     finally{
-    //         lock.release();
-    //     }
-    // }
 
     public int exchange (int tag, int value) {
         lock.acquire();
@@ -901,12 +835,12 @@ public class Rendezvous {
 
     public static void selfTest() {
         // place calls to your Rendezvous tests that you implement here
-        //rendezTest1();
-        //rendezTest2(); //different tag
+        //rendezTest1(); //same tag two threads
+        //rendezTest2(); //different tag for two threads each
         //rendezTest3();
         //rendezTest4(); //same tag with 8 threads
         //rendezTest5();
-        //rendezTest6();
-        rendezTest7();
+        rendezTest6(); 
+        //rendezTest7(); //random tag and random number of threads
     }
 }
