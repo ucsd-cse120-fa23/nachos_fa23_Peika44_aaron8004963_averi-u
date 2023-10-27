@@ -291,11 +291,13 @@ public class KThread {
 		Lib.debug(dbgThread, "Joining to thread: " + toString());
 		
 		Lib.assertTrue(this != currentThread);
+		Lib.assertTrue(this.joined != true);
 
 		boolean intStatus = Machine.interrupt().disable();
 		if (this.status != statusFinished) {
 			// The target thread is not finished, so we'll yield the CPU to allow other threads to run.
 			System.out.println("/---"+ currentThread + " yields to child: "+ this + "---/");
+			this.joined = true;
 			this.parentThread = currentThread;
 			currentThread.sleep();
 		}
@@ -609,5 +611,5 @@ public class KThread {
 
 	private static KThread idleThread = null;
 	
-	private ThreadQueue joinQueue = null;
+	private boolean joined = false;
 }

@@ -156,8 +156,17 @@ public class Alarm {
 	
 		// Invoke Alarm.selfTest() from ThreadedKernel.selfTest()
 	public static void selfTest() {
+		System.out.println("\n" +
+		"-----------------------------alarmTest1()---------------------------------------"
+		);
 		alarmTest1();
+		System.out.println("\n" +
+		"-----------------------------alarmTest2()---------------------------------------"
+		);
 		alarmTest2();
+		System.out.println("\n" +
+		"-----------------------------alarmTest3()---------------------------------------"
+		);
 		alarmTest3();
 		// Invoke your other test methods here ...
 	}
