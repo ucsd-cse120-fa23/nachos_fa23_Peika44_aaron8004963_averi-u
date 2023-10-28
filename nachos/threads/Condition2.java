@@ -14,7 +14,7 @@ import java.util.LinkedList;
  * @see nachos.threads.Condition
  */
 public class Condition2 {
-    private boolean isAwaked = false;
+    public boolean isAwaked = false;
 	/**
 	 * Allocate a new condition variable.
 	 * 
