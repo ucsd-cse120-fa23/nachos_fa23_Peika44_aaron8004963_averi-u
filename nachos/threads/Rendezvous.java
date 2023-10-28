@@ -835,12 +835,39 @@ public class Rendezvous {
 
     public static void selfTest() {
         // place calls to your Rendezvous tests that you implement here
-        //rendezTest1(); //same tag two threads
-        //rendezTest2(); //different tag for two threads each
-        //rendezTest3();
-        //rendezTest4(); //same tag with 8 threads
-        //rendezTest5();
-        rendezTest6(); 
-        //rendezTest7(); //random tag and random number of threads
+        // System.out.println("\n" +
+		// "-----------------------------rendezTest1()---------------------------------------"
+		// );
+        // //rendezTest1(); //same tag two threads
+
+        // System.out.println("\n" +
+		// "-----------------------------rendezTest2()---------------------------------------"
+		// );
+        // //rendezTest2(); //different tag for two threads each
+
+        // System.out.println("\n" +
+		// "-----------------------------rendezTest3()---------------------------------------"
+		// );
+        // //rendezTest3();
+
+        System.out.println("\n" +
+		"-----------------------------rendezTest4()---------------------------------------"
+		);
+        rendezTest4(); //same tag with 8 threads
+
+        // System.out.println("\n" +
+		// "-----------------------------rendezTest5()---------------------------------------"
+		// );
+        // //rendezTest5();
+
+        // System.out.println("\n" +
+		// "-----------------------------rendezTest6()---------------------------------------"
+		// );
+        // //rendezTest6(); 
+        
+        // System.out.println("\n" +
+		// "-----------------------------rendezTest7()---------------------------------------"
+		// );
+        // //rendezTest7(); //random tag and random number of threads
     }
 }
