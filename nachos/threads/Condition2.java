@@ -14,6 +14,7 @@ import java.util.LinkedList;
  * @see nachos.threads.Condition
  */
 public class Condition2 {
+    private boolean isAwaked = false;
 	/**
 	 * Allocate a new condition variable.
 	 * 
@@ -24,7 +25,7 @@ public class Condition2 {
 	public Condition2(Lock conditionLock) {
 		this.conditionLock = conditionLock;
 
-    waitQueue = new LinkedList<KThread>();
+        waitQueue = new LinkedList<KThread>();
 	}
 
 	/**
@@ -63,6 +64,8 @@ public class Condition2 {
         if (!waitQueue.isEmpty()) {
             KThread threadToWake = waitQueue.removeFirst();
 
+            isAwaked = true; 
+
 			System.out.println(KThread.currentThread().getName() + " wakes up the: " + threadToWake.getName());
 			
             //conditionLock.release();
@@ -100,16 +103,19 @@ public class Condition2 {
 			Lib.assertTrue(conditionLock.isHeldByCurrentThread());
 
 			//anw: 
-			boolean currentStatus = Machine.interrupt().disable();
+			boolean intStatus = Machine.interrupt().disable();
 			conditionLock.release();
 
+            isAwaked = false; 
 			waitQueue.add(KThread.currentThread());
 			ThreadedKernel.alarm.waitUntil(timeout);
 
-			waitQueue.remove(KThread.currentThread()); 
+            if (!isAwaked){
+			    waitQueue.remove(KThread.currentThread()); 
+            }
 			
 			conditionLock.acquire();
-			Machine.interrupt().restore(currentStatus);
+			Machine.interrupt().restore(intStatus);
 		}
 
 	// Place Condition2 testing code in the Condition2 class.
@@ -211,6 +217,38 @@ public class Condition2 {
 					" woke up, slept for " + (t1 - t0) + " ticks");
 		lock.release();
 	}
+    public static void sleepForTest2() {
+        final Condition2 cv = new Condition2(new Lock());
+
+        KThread t1 = new KThread(new Runnable() {
+            public void run() {
+                cv.conditionLock.acquire();
+                System.out.println("Thread 1: Acquired lock and calling sleepFor(5000)");
+                cv.sleepFor(5000);
+                System.out.println("Thread 1: Woken up and releasing lock.");
+                cv.conditionLock.release();
+            }
+        });
+
+        KThread t2 = new KThread(new Runnable() {
+            public void run() {
+                cv.conditionLock.acquire();
+                System.out.println("Thread 2: Acquired lock and waking threads.");
+                cv.wake();
+                System.out.println("Thread 2: Waking done and releasing lock.");
+                cv.conditionLock.release();
+            }
+        });
+
+        t1.fork();
+        ThreadedKernel.alarm.waitUntil(2000);  // Wait for 2 seconds
+        t2.fork();
+
+        t1.join();
+        t2.join();
+
+        System.out.println("Test 1 completed!");
+    }
 
 	    // Place Condition2 test code inside of the Condition2 class.
 
@@ -289,6 +327,10 @@ public class Condition2 {
 			"-----------------------------sleepForTest1()---------------------------------------"
 			);
 		sleepForTest1();
+        System.out.println("\n" +
+			"-----------------------------sleepForTest2()---------------------------------------"
+			);
+        sleepForTest2();
 		System.out.println("\n" +
 			"-----------------------------cvTest5()---------------------------------------"
 			);
