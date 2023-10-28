@@ -523,42 +523,63 @@ public class KThread {
 			}
 		});
 
+		
+		threadW.setName("Thread W").fork();
 		threadE.setName("Thread E").fork();
+		threadQ.setName("Thread Q").fork();
+		
+	}
+	
+	// //test on calling eachother
+	// private static void joinTest4() {
+	// 	KThread threadQ = new KThread(new Runnable() {
+	// 		public void run() {
+	// 			System.out.println("Thread Q: Started");
+	// 			System.out.println("Thread Q: Finished");
+	// 		}
+	// 	});
+	
+	// 	KThread threadW = new KThread(new Runnable() {
+	// 		public void run() {
+	// 			System.out.println("Thread W: Started");
+	// 			threadQ.join();
+	// 			System.out.println("Thread W: Finished");
+	// 		}
+	// 	});
+	// 	threadQ.setName("Thread E").fork();
+	// 	threadW.setName("Thread W").fork();
+	// }
+	// test on calling same thread
+	private static void joinTest5() {
+		KThread threadQ = new KThread(new Runnable() {
+			public void run() {
+				System.out.println("Thread Q: Started");
+				System.out.println("Thread Q: Finished");
+			}
+		});
+	
+		KThread threadW = new KThread(new Runnable() {
+			public void run() {
+				System.out.println("Thread W: Started");
+				threadQ.join();
+				System.out.println("Thread W: Finished");
+			}
+		});
+
+		KThread threadE = new KThread(new Runnable() {
+			public void run() {
+				System.out.println("Thread E: Started");
+				System.out.println("Thread E: Joining with Thread Q");
+				threadQ.join(); // assert false
+				System.out.println("cannot reach here");
+			}
+		});
+
+		
 		threadW.setName("Thread W").fork();
 		threadQ.setName("Thread Q").fork();
+		threadE.setName("Thread E").fork();
 	}
-
-	private static void joinTest5() {
-			KThread threadQ = new KThread(new Runnable() {
-				public void run() {
-					System.out.println("Thread Q: Started");
-					System.out.println("Thread Q: Finished");
-				}
-			});
-		
-			KThread threadW = new KThread(new Runnable() {
-				public void run() {
-					System.out.println("Thread W: Started");
-					threadQ.join();
-					System.out.println("Thread W: Finished");
-				}
-			});
-	
-			KThread threadE = new KThread(new Runnable() {
-				public void run() {
-					System.out.println("Thread E: Started");
-					System.out.println("Thread E: Joining with Thread Q");
-					threadQ.join(); // assert false
-					System.out.println("cannot reach here");
-				}
-			});
-	
-			
-			threadW.setName("Thread W").fork();
-			threadQ.setName("Thread Q").fork();
-			threadE.setName("Thread E").fork();
-		}
-	
 
 	/**
 	 * Tests whether this module is working.
@@ -589,12 +610,20 @@ public class KThread {
 			);
 		joinTest3();
 
+		// new KThread(new PingTest(1)).setName("forked thread").fork();
+		// new PingTest(0).run();
+		// System.out.println("\n" +
+		// 	"-----------------------------joinTest4()---------------------------------------"
+		// 	);
+		// joinTest4();
+
 		new KThread(new PingTest(1)).setName("forked thread").fork();
 		new PingTest(0).run();
 		System.out.println("\n" +
 			"-----------------------------joinTest5()---------------------------------------"
 			);
-		//joinTest5();
+		joinTest5();
+
 	}
 	
 

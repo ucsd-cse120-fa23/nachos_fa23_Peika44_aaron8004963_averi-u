@@ -71,12 +71,15 @@ public class Alarm {
 
 		boolean current = Machine.interrupt().disable();
 
-		long wakeT = Machine.timer().getTime() + x;
+		if(x > 0){
+			long wakeT = Machine.timer().getTime() + x;
 
-		KThread currentThread = KThread.currentThread();
-		PriorThread priorThread = new PriorThread(currentThread, wakeT);
-        waitQueue.add(priorThread);
-        currentThread.sleep();
+			KThread currentThread = KThread.currentThread();
+			PriorThread priorThread = new PriorThread(currentThread, wakeT);
+        	waitQueue.add(priorThread);
+        	currentThread.sleep();
+		}
+
 
         Machine.interrupt().restore(current);
 
@@ -161,6 +164,35 @@ public class Alarm {
 			thread1.join();
 			thread2.join();
 		}
+
+		public static void alarmTest4() {
+			KThread thread1 = new KThread(new Runnable() {
+				public void run() {
+					long startTime = Machine.timer().getTime();
+					ThreadedKernel.alarm.waitUntil(0);
+					long wakeUpTime = Machine.timer().getTime();
+					System.out.println("alarmTest4: Thread_1 waited for " + (wakeUpTime - startTime) + "(Expected 0)" + " ticks");
+				}
+			});
+		
+			KThread thread2 = new KThread(new Runnable() {
+				public void run() {
+					long startTime = Machine.timer().getTime();
+					ThreadedKernel.alarm.waitUntil(0);
+					long wakeUpTime = Machine.timer().getTime();
+					System.out.println("alarmTest4: Thread_2 waited for " + (wakeUpTime - startTime) + "(Expected 0)" + " ticks");
+				}
+			});
+		
+			thread1.setName("alarmTest4_Thread_1");
+			thread2.setName("alarmTest4_Thread_2");
+		
+			thread1.fork();
+			thread2.fork();
+		
+			thread1.join();
+			thread2.join();
+		}
 		
 	
 		// Implement more test methods here ...
@@ -179,6 +211,10 @@ public class Alarm {
 		"-----------------------------alarmTest3()---------------------------------------"
 		);
 		alarmTest3();
+		System.out.println("\n" +
+		"-----------------------------alarmTest4()---------------------------------------"
+		);
+		alarmTest4();
 		// Invoke your other test methods here ...
 	}
 
