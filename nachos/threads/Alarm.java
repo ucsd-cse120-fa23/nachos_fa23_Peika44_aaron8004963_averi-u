@@ -36,9 +36,12 @@ public class Alarm {
         boolean initStatus = Machine.interrupt().disable();
 
         long currentTime = Machine.timer().getTime();
-        while (!waitQueue.isEmpty() && waitQueue.peek().wakeTime <= currentTime) {
-            KThread thread = waitQueue.poll().thread;
-            thread.ready();
+        if (!waitQueue.isEmpty()) {
+			if(waitQueue.peek().wakeTime <= currentTime){
+           		 waitQueue.poll().thread.ready();
+			}else{
+				System.out.println("current time " + currentTime + ", waitqueue.peek time: "+ waitQueue.peek().wakeTime);
+			}
         }
 
         Machine.interrupt().restore(initStatus);
