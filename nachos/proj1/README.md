@@ -20,7 +20,7 @@ Manually running the program with different datasets/scenarios.
 
 Contributions  
 [Peike Xu]: Mainly focused on implementation of Rendezvous function. Creating multiple tests for p5 and p2 questions. Colaborate on debugging other parts.
-[Averi Yu]: Implemented parts of Alarm.java and Condition2.java, specifically the function of timerInterrupt, sleepFor, sleepForTest1, etc. Tested methods according to instructions provided for p1 and p4 questions. Look through other parts and help debugging. 
+[Averi Yu]: Implemented parts of Alarm.java and Condition2.java for p1 and p4, specifically the function of timerInterrupt, sleepFor, sleepForTest1, and more. Tested methods according to instructions provided for p1 and p4 questions. Look through other problems and help debugging. 
 [Arron Li ]: 
 (random order)
 
