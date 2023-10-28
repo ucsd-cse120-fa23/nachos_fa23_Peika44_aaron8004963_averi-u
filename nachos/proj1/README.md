@@ -6,6 +6,7 @@ Code Description
 The main functionalities are divided among several Python files:
 
 Alarm.java: Uses the hardware timer to provide preemption, and to allow threads to sleep until a certain time.
+Condition2.java: An implementation of condition variables that disables interrupt()s for synchronization.
 [to be added]...
 
 How Well It Worked
@@ -19,7 +20,7 @@ Manually running the program with different datasets/scenarios.
 
 Contributions  
 [Peike Xu]: Mainly focused on implementation of Rendezvous function. Creating multiple tests for p5 and p2 questions. Colaborate on debugging other parts.
-[Averi Yu]: Implemented Alarm.java and Condition2.java, specifically the function of timerInterrupt, sleepFor, sleepForTest1, etc. Tested methods according to instructions provided for p1 and p4 questions. Look through other parts and help debugging. 
+[Averi Yu]: Implemented parts of Alarm.java and Condition2.java, specifically the function of timerInterrupt, sleepFor, sleepForTest1, etc. Tested methods according to instructions provided for p1 and p4 questions. Look through other parts and help debugging. 
 [Arron Li ]: 
 (random order)
 
