@@ -32,24 +32,18 @@ public class Alarm {
 	 * thread to yield, forcing a context switch if there is another thread that
 	 * should be run.
 	 */
-	public void timerInterrupt() {
-		
-		boolean initStatus = Machine.interrupt().disable();
+    public void timerInterrupt() {
+        boolean initStatus = Machine.interrupt().disable();
 
-		// while()
-		while (!waitQueue.isEmpty()) {
-            PriorThread priorThread = waitQueue.peek();
-            if (priorThread.priority <= Machine.timer().getTime()) {
-                waitQueue.poll();
-                priorThread.thread.ready();
-            } else
-                break;
-
+        long currentTime = Machine.timer().getTime();
+        while (!waitQueue.isEmpty() && waitQueue.peek().wakeTime <= currentTime) {
+            KThread thread = waitQueue.poll().thread;
+            thread.ready();
         }
 
-		Machine.interrupt().restore(initStatus);
-		KThread.currentThread().yield();
-	}
+        Machine.interrupt().restore(initStatus);
+        KThread.currentThread().yield();
+    }
 
 	/**
 	 * Put the current thread to sleep for at least <i>x</i> ticks, waking it up
@@ -63,27 +57,15 @@ public class Alarm {
 	 * 
 	 * @see nachos.machine.Timer#getTime()
 	 */
-	public void waitUntil(long x) {
-		// for now, cheat just to get something working (busy waiting is bad)
-		// long wakeTime = Machine.timer().getTime() + x;
-		// while (wakeTime > Machine.timer().getTime())
-		// 	KThread.yield();
-
-		boolean current = Machine.interrupt().disable();
-
+    public void waitUntil(long x) {
+        boolean current = Machine.interrupt().disable();
 		if(x > 0){
-			long wakeT = Machine.timer().getTime() + x;
-
-			KThread currentThread = KThread.currentThread();
-			PriorThread priorThread = new PriorThread(currentThread, wakeT);
-        	waitQueue.add(priorThread);
-        	currentThread.sleep();
+        	long wakeTime = Machine.timer().getTime() + x;
+			waitQueue.add(new AlarmEntry(KThread.currentThread(), wakeTime));
+        	KThread.currentThread().sleep();
 		}
-
-
         Machine.interrupt().restore(current);
-
-	}
+    }
 
         /**
 	 * Cancel any timer set by <i>thread</i>, effectively waking
@@ -94,18 +76,24 @@ public class Alarm {
 	 * <p>
 	 * @param thread the thread whose timer should be cancelled.
 	 */
-    public boolean cancel(KThread thread) {
+	public boolean cancel(KThread thread) {
 		boolean initStatus = Machine.interrupt().disable();
-		for (PriorThread priorThread : waitQueue) {
-			if (priorThread.thread == thread){ 
-				waitQueue.remove(priorThread);
-				priorThread.thread.ready();
-
-				Machine.interrupt().restore(initStatus);
-				return true;
+		AlarmEntry entryToCancel = null;
+	
+		for (AlarmEntry entry : waitQueue) {
+			if (entry.thread == thread) {
+				entryToCancel = entry;
+				break;
 			}
 		}
-		
+	
+		if (entryToCancel != null) {
+			waitQueue.remove(entryToCancel);
+			entryToCancel.thread.ready();
+			Machine.interrupt().restore(initStatus);
+			return true;
+		}
+	
 		Machine.interrupt().restore(initStatus);
 		return false;
 	}
@@ -193,6 +181,18 @@ public class Alarm {
 			thread1.join();
 			thread2.join();
 		}
+
+		public static void alarmTest5() {
+			int durations[] = { 5000, 1000, 2000, 500, 5000 };
+			long t0, t1;
+		
+			for (int d : durations) {
+				t0 = Machine.timer().getTime();
+				ThreadedKernel.alarm.waitUntil(d);
+				t1 = Machine.timer().getTime();
+				System.out.println("alarmTest2: waited for " + (t1 - t0) + " ticks"+ "(Expected" + d + ")" + " ticks");
+			}
+		}
 		
 	
 		// Implement more test methods here ...
@@ -215,28 +215,29 @@ public class Alarm {
 		"-----------------------------alarmTest4()---------------------------------------"
 		);
 		alarmTest4();
-		// Invoke your other test methods here ...
+		System.out.println("\n" +
+		"-----------------------------alarmTest5()---------------------------------------"
+		);
+		alarmTest5();
 	}
 
-	private PriorityQueue<PriorThread> waitQueue = new PriorityQueue<>(new PriorThread.Comp());
-}
+    private PriorityQueue<AlarmEntry> waitQueue = new PriorityQueue<>();
 
-class PriorThread {
-    public KThread thread;
-    public long priority;
+	private static class AlarmEntry implements Comparable<AlarmEntry> {
+		public KThread thread;
+		public long wakeTime;
+	
+		public AlarmEntry(KThread t, long wt) {
+			thread = t;
+			wakeTime = wt;
+		}
+	
+		@Override
+		public int compareTo(AlarmEntry other) {
+			// Compare AlarmEntries based on wakeTime
+			return Long.compare(this.wakeTime, other.wakeTime);
+		}
+	}
+	
 
-    public PriorThread(KThread t, long p) {
-        thread = t;
-        priority = p;
-    }
-
-    public static class Comp implements Comparator<PriorThread> {
-        public int compare(PriorThread a, PriorThread b) {
-            if (a.priority > b.priority)
-                return 1;
-            else if (a.priority < b.priority)
-                return -1;
-            return 0;
-        }
-    }
 }

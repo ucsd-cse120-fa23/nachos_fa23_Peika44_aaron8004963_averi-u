@@ -175,7 +175,7 @@ public class Condition {
 
 	public static void selfTest() {
 		System.out.println("\n" +
-			"-----------------------------cvTest5()---------------------------------------"
+			"-----------------------------givencvTest5()---------------------------------------"
 			);
 			
 		cvTest5();

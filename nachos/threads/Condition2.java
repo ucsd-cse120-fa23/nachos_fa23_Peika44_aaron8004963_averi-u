@@ -37,10 +37,11 @@ public class Condition2 {
 		Lib.assertTrue(conditionLock.isHeldByCurrentThread());
 		boolean intStatus = Machine.interrupt().disable();
 
-		conditionLock.release();
 
 		System.out.println("go sleep: " + KThread.currentThread().getName());
         waitQueue.add(KThread.currentThread());
+        conditionLock.release();
+
 		KThread.sleep();
 
 		conditionLock.acquire();
@@ -54,23 +55,17 @@ public class Condition2 {
 	 * current thread must hold the associated lock.
 	 */
 	public void wake() {
-		Lib.assertTrue(conditionLock.isHeldByCurrentThread());
+        Lib.assertTrue(conditionLock.isHeldByCurrentThread());
 
-		boolean intStatus = Machine.interrupt().disable();
-
-		if (!waitQueue.isEmpty()) {
-			
+        boolean intStatus = Machine.interrupt().disable();
+    
+        if (!waitQueue.isEmpty()) {
             KThread threadToWake = waitQueue.removeFirst();
-			System.out.println(KThread.currentThread().getName() + " wakes up the: " + threadToWake.getName());
-			
-            conditionLock.release();
-			
+            System.out.println(KThread.currentThread().getName() + " wakes up the: " + threadToWake.getName());
             threadToWake.ready();
-			
-            conditionLock.acquire(); 
-		}
-
-		Machine.interrupt().restore(intStatus);
+        }
+        
+        Machine.interrupt().restore(intStatus);
 	}
 	
 
@@ -165,7 +160,7 @@ public class Condition2 {
         private static class Interlocker implements Runnable {
             public void run () {
                 lock.acquire();
-                for (int i = 0; i < 5; i++) {
+                for (int i = 0; i < 3; i++) {
 					System.out.println("Wake up: " + KThread.currentThread().getName());
                     cv.wake();   // signal
                     cv.sleep();  // wait
