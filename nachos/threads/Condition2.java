@@ -110,10 +110,8 @@ public class Condition2 {
 			waitQueue.add(KThread.currentThread());
 			ThreadedKernel.alarm.waitUntil(timeout);
 
-            if (!isAwaked){
-			    waitQueue.remove(KThread.currentThread()); 
-            }
-			
+            if (!isAwaked) waitQueue.remove(KThread.currentThread()); 
+            
 			conditionLock.acquire();
 			Machine.interrupt().restore(intStatus);
 		}
@@ -223,9 +221,8 @@ public class Condition2 {
         KThread t1 = new KThread(new Runnable() {
             public void run() {
                 cv.conditionLock.acquire();
-                System.out.println("Thread 1: Acquired lock and calling sleepFor(5000)");
                 cv.sleepFor(5000);
-                System.out.println("Thread 1: Woken up and releasing lock.");
+                System.out.println("Thread 1: Woken up.");
                 cv.conditionLock.release();
             }
         });
@@ -233,9 +230,8 @@ public class Condition2 {
         KThread t2 = new KThread(new Runnable() {
             public void run() {
                 cv.conditionLock.acquire();
-                System.out.println("Thread 2: Acquired lock and waking threads.");
                 cv.wake();
-                System.out.println("Thread 2: Waking done and releasing lock.");
+                System.out.println("Thread 2: Waking done.");
                 cv.conditionLock.release();
             }
         });
@@ -256,9 +252,8 @@ public class Condition2 {
         KThread t1 = new KThread(new Runnable() {
             public void run() {
                 cv.conditionLock.acquire();
-                System.out.println("Thread 1: Acquired lock and calling sleepFor(5000)");
                 cv.sleepFor(5000);
-                System.out.println("Thread 1: Woken up and releasing lock.");
+                System.out.println("Thread 1: Woken up.");
                 cv.conditionLock.release();
             }
         });
@@ -266,9 +261,8 @@ public class Condition2 {
         KThread t2 = new KThread(new Runnable() {
             public void run() {
                 cv.conditionLock.acquire();
-                System.out.println("Thread 2: Acquired lock and calling sleepFor(8000)");
                 cv.sleepFor(8000);
-                System.out.println("Thread 2: Woken up and releasing lock.");
+                System.out.println("Thread 2: Woken up.");
                 cv.conditionLock.release();
             }
         });
@@ -276,9 +270,8 @@ public class Condition2 {
         KThread t3 = new KThread(new Runnable() {
             public void run() {
                 cv.conditionLock.acquire();
-                System.out.println("Thread 3: Acquired lock and waking all threads.");
                 cv.wakeAll();
-                System.out.println("Thread 3: Waking all done and releasing lock.");
+                System.out.println("Thread 3: Waking all.");
                 cv.conditionLock.release();
             }
         });
@@ -292,7 +285,7 @@ public class Condition2 {
         t2.join();
         t3.join();
 
-        System.out.println("sleepForTest 3 completed!");
+        System.out.println("sleepForTest3 completed!");
     }
 
 
