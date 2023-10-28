@@ -71,12 +71,15 @@ public class Alarm {
 
 		boolean current = Machine.interrupt().disable();
 
-		long wakeT = Machine.timer().getTime() + x;
+		if(x > 0){
+			long wakeT = Machine.timer().getTime() + x;
 
-		KThread currentThread = KThread.currentThread();
-		PriorThread priorThread = new PriorThread(currentThread, wakeT);
-        waitQueue.add(priorThread);
-        currentThread.sleep();
+			KThread currentThread = KThread.currentThread();
+			PriorThread priorThread = new PriorThread(currentThread, wakeT);
+        	waitQueue.add(priorThread);
+        	currentThread.sleep();
+		}
+
 
         Machine.interrupt().restore(current);
 
