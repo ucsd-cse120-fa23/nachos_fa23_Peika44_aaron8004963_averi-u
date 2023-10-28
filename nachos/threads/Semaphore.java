@@ -88,6 +88,7 @@ public class Semaphore {
 	 * Test if this module is working.
 	 */
 	public static void selfTest() {
+		
 		Semaphore ping = new Semaphore(0);
 		Semaphore pong = new Semaphore(0);
 

@@ -62,6 +62,7 @@ public class Condition2 {
     
         if (!waitQueue.isEmpty()) {
             KThread threadToWake = waitQueue.removeFirst();
+
 			System.out.println(KThread.currentThread().getName() + " wakes up the: " + threadToWake.getName());
 			
             //conditionLock.release();
