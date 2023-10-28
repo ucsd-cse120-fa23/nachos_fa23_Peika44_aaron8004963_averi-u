@@ -35,6 +35,7 @@ public class Condition2 {
 	 */
 	public void sleep() {
 		Lib.assertTrue(conditionLock.isHeldByCurrentThread());
+
 		boolean intStatus = Machine.interrupt().disable();
 
 
@@ -61,11 +62,16 @@ public class Condition2 {
     
         if (!waitQueue.isEmpty()) {
             KThread threadToWake = waitQueue.removeFirst();
-            System.out.println(KThread.currentThread().getName() + " wakes up the: " + threadToWake.getName());
+			System.out.println(KThread.currentThread().getName() + " wakes up the: " + threadToWake.getName());
+			
+            //conditionLock.release();
+			
             threadToWake.ready();
-        }
-        
-        Machine.interrupt().restore(intStatus);
+			
+            //conditionLock.acquire(); 
+		}
+
+		Machine.interrupt().restore(intStatus);
 	}
 	
 
