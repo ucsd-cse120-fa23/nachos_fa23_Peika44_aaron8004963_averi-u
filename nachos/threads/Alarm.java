@@ -34,20 +34,28 @@ public class Alarm {
 	 */
 	public void timerInterrupt() {
 		
-		boolean initStatus = Machine.interrupt().disable();
+		// boolean initStatus = Machine.interrupt().disable();
 
-		// while()
-		while (!waitQueue.isEmpty()) {
-            PriorThread priorThread = waitQueue.peek();
-            if (priorThread.priority <= Machine.timer().getTime()) {
-                waitQueue.poll();
-                priorThread.thread.ready();
-            } else
-                break;
+		// // while()
+		// while (!waitQueue.isEmpty()) {
+        //     PriorThread priorThread = waitQueue.peek();
+        //     if (priorThread.priority <= Machine.timer().getTime()) {
+        //         waitQueue.poll();
+        //         priorThread.thread.ready();
+        //     } else
+        //         break;
 
-        }
+        // }
 
-		Machine.interrupt().restore(initStatus);
+		// Machine.interrupt().restore(initStatus);
+		// KThread.currentThread().yield();
+		boolean oldStatus = Machine.interrupt().disable();
+
+		while (!waitQueue.isEmpty() && waitQueue.peek().priority <= Machine.timer().getTime()) {
+			waitQueue.poll().thread.ready();
+		}
+
+		Machine.interrupt().restore(oldStatus);
 		KThread.currentThread().yield();
 	}
 
