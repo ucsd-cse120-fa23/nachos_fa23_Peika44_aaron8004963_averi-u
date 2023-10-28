@@ -247,8 +247,55 @@ public class Condition2 {
         t1.join();
         t2.join();
 
-        System.out.println("Test 1 completed!");
+        System.out.println("sleepForTest2 completed!");
     }
+
+    public static void sleepForTest3() {
+        final Condition2 cv = new Condition2(new Lock());
+
+        KThread t1 = new KThread(new Runnable() {
+            public void run() {
+                cv.conditionLock.acquire();
+                System.out.println("Thread 1: Acquired lock and calling sleepFor(5000)");
+                cv.sleepFor(5000);
+                System.out.println("Thread 1: Woken up and releasing lock.");
+                cv.conditionLock.release();
+            }
+        });
+
+        KThread t2 = new KThread(new Runnable() {
+            public void run() {
+                cv.conditionLock.acquire();
+                System.out.println("Thread 2: Acquired lock and calling sleepFor(8000)");
+                cv.sleepFor(8000);
+                System.out.println("Thread 2: Woken up and releasing lock.");
+                cv.conditionLock.release();
+            }
+        });
+
+        KThread t3 = new KThread(new Runnable() {
+            public void run() {
+                cv.conditionLock.acquire();
+                System.out.println("Thread 3: Acquired lock and waking all threads.");
+                cv.wakeAll();
+                System.out.println("Thread 3: Waking all done and releasing lock.");
+                cv.conditionLock.release();
+            }
+        });
+
+        t1.fork();
+        t2.fork();
+        ThreadedKernel.alarm.waitUntil(2000);  // Wait for 2 seconds
+        t3.fork();
+
+        t1.join();
+        t2.join();
+        t3.join();
+
+        System.out.println("sleepForTest 3 completed!");
+    }
+
+
 
 	    // Place Condition2 test code inside of the Condition2 class.
 
@@ -331,6 +378,10 @@ public class Condition2 {
 			"-----------------------------sleepForTest2()---------------------------------------"
 			);
         sleepForTest2();
+        System.out.println("\n" +
+			"-----------------------------sleepForTest3()---------------------------------------"
+			);
+        sleepForTest3();
 		System.out.println("\n" +
 			"-----------------------------cvTest5()---------------------------------------"
 			);

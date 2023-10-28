@@ -7,7 +7,7 @@ The main functionalities are divided among several Python files:
 
 Alarm.java: Uses the hardware timer to provide preemption, and to allow threads to sleep until a certain time.
 Condition2.java: An implementation of condition variables that disables interrupt()s for synchronization.
-[to be added]...
+...
 
 How Well It Worked
 The project was largely successful. We passed all basic tests and the methods implemented are all functional. We also implemented more tests to make sure all conditions are handled. 
