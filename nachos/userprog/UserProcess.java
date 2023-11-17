@@ -4,6 +4,7 @@ import nachos.machine.*;
 import nachos.threads.*;
 import nachos.userprog.*;
 import nachos.vm.*;
+import java.util.*;
 
 import java.io.EOFException;
 
@@ -24,6 +25,9 @@ public class UserProcess {
 	 * Allocate a new process.
 	 */
 	public UserProcess() {
+		this.PID = PIDCounter ++;
+		totalProcess++;
+
 		int numPhysPages = Machine.processor().getNumPhysPages();
 		pageTable = new TranslationEntry[numPhysPages];
 		for (int i = 0; i < numPhysPages; i++)
@@ -385,17 +389,95 @@ public class UserProcess {
 	 * Handle the exit() system call.
 	 */
 	private int handleExit(int status) {
-	        // Do not remove this call to the autoGrader...
 		Machine.autoGrader().finishingCurrentProcess(status);
-		// ...and leave it as the top of handleExit so that we
-		// can grade your implementation.
-
 		Lib.debug(dbgProcess, "UserProcess.handleExit (" + status + ")");
-		// for now, unconditionally terminate with just one process
-		Kernel.kernel.terminate();
 
-		return 0;
+		//TODO: close filedescriptor...
+
+		//if it has parent, update parent's child map
+		if(parentProcess != null){
+			if(!normalExited){
+				parentProcess.setStatus(PID, 0);
+			}else{
+				parentProcess.setStatus(PID, status);
+			}
+			childExitCondition.wake();
+		}
+
+		//if this is the last process
+		totalProcess--;
+		if(totalProcess==0){
+			Kernel.kernel.terminate();
+		}
+		
+		KThread.finish();
+		return status;
 	}
+
+	private int handleExec(int fileNameAddr, int argc, int argvAddr) {
+		if (fileNameAddr == 0 || argc < 0) {
+			return -1;
+		}
+	
+		String fileName = readVirtualMemoryString(fileNameAddr, 256); // Limit filename length
+		if (fileName == null || !fileName.endsWith(".coff")) {
+			return -1;
+		}
+	
+		//get args
+		String[] args = new String[argc];
+		for (int i = 0; i < argc; i++) {
+			
+			//get an argv's element(4-bytes pointer) to buffer
+			byte[] buffer = new byte[4]; 
+			if (readVirtualMemory(argvAddr + i * 4, buffer) != 4) {  
+				return -1;
+			}
+			int argPtr = Lib.bytesToInt(buffer, 0);
+
+			//store to args
+			args[i] = readVirtualMemoryString(argPtr, 256); // Limit arg length
+			if (args[i] == null) {
+				return -1;
+			}
+		}
+	
+		//create new process
+		UserProcess newProcess = newUserProcess();
+		if (newProcess.execute(fileName, args)) {
+			childProcesses.put(newProcess.getPID(), new Pair<>(newProcess, -1));
+			return newProcess.getPID();
+		} else {
+			return -1;
+		}
+	}
+	
+	public int handleJoin(int childPID, int statusPointer) {
+		processLock.acquire();
+
+		UserProcess child = getChildProcess(childPID);
+		if (child == null) {
+			processLock.release();
+			return -1; 
+		}
+
+		//sleep untill child.hasExited
+		while (getStatus(childPID) == -1) {
+			childExitCondition.sleep();
+		}
+		//wakeup&get exit status of the child
+		int status = getStatus(childPID);
+		childProcesses.remove(childPID);
+
+		if (statusPointer != 0) {
+			byte[] statusBytes = Lib.bytesFromInt(status);
+			writeVirtualMemory(statusPointer, statusBytes);
+		}
+
+		processLock.release();
+		return status;
+	}
+	
 
 	private static final int syscallHalt = 0, syscallExit = 1, syscallExec = 2,
 			syscallJoin = 3, syscallCreate = 4, syscallOpen = 5,
@@ -469,7 +551,10 @@ public class UserProcess {
 			return handleHalt();
 		case syscallExit:
 			return handleExit(a0);
-
+		case syscallExec:
+            return handleExec(a0, a1, a2);
+		case syscallJoin:
+			return handleJoin(a0, a1);
 		default:
 			Lib.debug(dbgProcess, "Unknown syscall " + syscall);
 			Lib.assertNotReached("Unknown system call!");
@@ -501,6 +586,8 @@ public class UserProcess {
 		default:
 			Lib.debug(dbgProcess, "Unexpected exception: "
 					+ Processor.exceptionNames[cause]);
+				normalExited = false;
+				handleExit(0);
 			Lib.assertNotReached("Unexpected exception");
 		}
 	}
@@ -527,4 +614,53 @@ public class UserProcess {
 	private static final int pageSize = Processor.pageSize;
 
 	private static final char dbgProcess = 'a';
+	
+	private int PID;
+	private static int PIDCounter = 0;
+	private HashMap<Integer, Pair<UserProcess, Integer>> childProcesses;//-1 runing,1 exited normaly,0 exception
+	private UserProcess parentProcess;
+	private Lock processLock = new Lock();
+	private Condition childExitCondition = new Condition(processLock);
+	private static int totalProcess = 0;
+	private static boolean normalExited = true;
+
+	public class Pair<U, V> {
+		private U first;
+		private V second;
+	
+		public Pair(U first, V second) {
+			this.first = first;
+			this.second = second;
+		}
+	
+		public U getFirst() {
+			return first;
+		}
+	
+		public V getSecond() {
+			return second;
+		}
+
+		public V setSecond(V data) {
+			this.second = data;
+			return data;
+		}
+	}
+	
+	public int getPID() {
+        return PID;
+    }
+
+    public UserProcess getChildProcess(int pid) {
+		return childProcesses.get((Integer)pid).getFirst();
+    }
+
+	public int getStatus (int pid){
+		return childProcesses.get(pid).getSecond();
+	}
+
+	public int setStatus(int pid,int status){
+		this.childProcesses.get(pid).setSecond(status);
+		return status;
+	}
 }
