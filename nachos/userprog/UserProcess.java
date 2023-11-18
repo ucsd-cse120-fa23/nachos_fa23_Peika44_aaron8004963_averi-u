@@ -456,7 +456,7 @@ public class UserProcess {
 	 * Handle the create() system call.
 	 */
 	private int handleCreate(int file) {
-		Lib.debug(dbgProcess, "UserProcess.handleCreate ( " + file + " )");
+		//Lib.debug(dbgProcess, "UserProcess.handleCreate ( " + file + " )");
 
 		if (file < 0) {
 			Lib.debug(dbgProcess, "Invalid argument");
@@ -507,7 +507,7 @@ public class UserProcess {
 	 * Handle the Open() system call.
 	 */
 	private int handleOpen(int file) {
-		Lib.debug(dbgProcess, "UserProcess.handleOpen ( " + file + " )");
+		//Lib.debug(dbgProcess, "UserProcess.handleOpen ( " + file + " )");
 
 		if (file < 0) {
 			Lib.debug(dbgProcess, "Invalid argument");
@@ -577,9 +577,9 @@ public class UserProcess {
 	 * Handle the write() system call.
 	 */
 	private int handleWrite(int fd, int vaddr, int length) {
-		Lib.debug(dbgProcess, "UserProcess.handlewrite ( " + fd + " )");
+		//Lib.debug(dbgProcess, "UserProcess.handlewrite ( " + fd + " )");
 
-		Lib.debug(dbgProcess, "vaddr:" + vaddr);		
+		//Lib.debug(dbgProcess, "vaddr:" + vaddr);		
 		if (fd < 0 || fd >= numFiles || vaddr < 0 || length < 0 || vaddr > initialSP || length > numPages * pageSize) {
 			Lib.debug(dbgProcess, "Invalid arguments");
 			return -1;
@@ -601,7 +601,7 @@ public class UserProcess {
 		if (writeByte < 0){
 			return -1;
 		}
-		Lib.debug(dbgProcess, "writebyte:" + writeByte);
+		//Lib.debug(dbgProcess, "writebyte:" + writeByte);
 
 		int count = fileDescriptors[fd].write(buff, 0, writeByte);
 		
@@ -619,7 +619,7 @@ public class UserProcess {
 	 * Handle the close() system call.
 	 */
 	private int handleClose(int fd) {
-		Lib.debug(dbgProcess, "UserProcess.handleclose ( " + fd + " )");
+		//Lib.debug(dbgProcess, "UserProcess.handleclose ( " + fd + " )");
 
 		if (fd < 0 || fd >= numFiles ) {
 			Lib.debug(dbgProcess, "Invalid argument");
