@@ -40,7 +40,7 @@ public class Alarm {
 			if(waitQueue.peek().wakeTime <= currentTime){
            		 waitQueue.poll().thread.ready();
 			}else{
-				System.out.println("current time " + currentTime + ", waitqueue.peek time: "+ waitQueue.peek().wakeTime);
+				// System.out.println("current time " + currentTime + ", waitqueue.peek time: "+ waitQueue.peek().wakeTime);
 			}
         }
 
