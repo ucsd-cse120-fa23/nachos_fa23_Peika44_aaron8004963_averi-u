@@ -560,7 +560,6 @@ public class UserProcess {
 			return handleHalt();
 		case syscallExit:
 			return handleExit(a0);
-
 		case syscallCreate:
 			return handleCreate(a0);
 		case syscallOpen:
@@ -647,6 +646,7 @@ public class UserProcess {
 	private Condition childExitCondition = new Condition(processLock);
 	private static int totalProcess = 0;
 	private static boolean normalExited = true;
+	private static final int numFiles = 16;
 
 	public class Pair<U, V> {
 		private U first;
@@ -688,5 +688,4 @@ public class UserProcess {
 		return status;
 	}
 
-	private static final int numFiles = 16;
 }
