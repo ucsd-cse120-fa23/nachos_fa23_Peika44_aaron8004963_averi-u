@@ -6,6 +6,7 @@ import nachos.userprog.*;
 import nachos.vm.*;
 
 import java.io.EOFException;
+import java.io.FileDescriptor;
 
 /**
  * Encapsulates the state of a user process that is not contained in its user
@@ -28,6 +29,10 @@ public class UserProcess {
 		pageTable = new TranslationEntry[numPhysPages];
 		for (int i = 0; i < numPhysPages; i++)
 			pageTable[i] = new TranslationEntry(i, i, true, false, false, false);
+		
+		fileDescriptors = new OpenFile[numFiles];
+		fileDescriptors[0] = UserKernel.console.openForReading();
+		fileDescriptors[1] = UserKernel.console.openForWriting();
 	}
 
 	/**
@@ -77,6 +82,7 @@ public class UserProcess {
 	 * Called by <tt>UThread.saveState()</tt>.
 	 */
 	public void saveState() {
+		
 	}
 
 	/**
@@ -397,6 +403,275 @@ public class UserProcess {
 		return 0;
 	}
 
+	// /*
+	//  * Handel the Exec() system call
+	//  */
+	// private int handleExec(int file, int argc, int argv) {
+	// 	Lib.debug(dbgProcess, "UserProcess.handleExec (" + file + ", " + argc + ", " + argv + ")");
+
+	// 	if (file < 0 || argc < 0 || argv < 0) {
+	// 		Lib.debug(dbgProcess, "Invalid arguments");
+	// 		return -1;
+	// 	}
+
+	// 	String fileName = readVirtualMemoryString(file, 256);
+	// 	if (fileName == null) {
+	// 		Lib.debug(dbgProcess, "Invalid file name");
+	// 		return -1;
+	// 	}
+
+	// 	String[] args = new String[argc];
+	// 	for (int i = 0; i < argc; i++) {
+	// 		byte[] arg = new byte[4];
+	// 		int bytesRead = readVirtualMemory(argv + i * 4, arg);
+	// 		if (bytesRead != 4) {
+	// 			Lib.debug(dbgProcess, "Invalid argument");
+	// 			return -1;
+	// 		}
+	// 		int argAddr = Lib.bytesToInt(arg, 0);
+	// 		args[i] = readVirtualMemoryString(argAddr, 256);
+	// 		if (args[i] == null) {
+	// 			Lib.debug(dbgProcess, "Invalid argument");
+	// 			return -1;
+	// 		}
+	// 	}
+
+	// 	thread = new UThread(this);
+	// 	return thread.fork();
+	// }
+
+	// /*
+	//  * Handle the join() system call.
+	//  */
+	// private int handleJoin(int pid, int status) {
+	// 	Lib.debug(dbgProcess, "UserProcess.handleJoin (" + pid + ", " + status + ")");
+
+	// 	if (pid < 0 || status < 0) {
+	// 		Lib.debug(dbgProcess, "Invalid arguments");
+	// 		return -1;
+	// 	}
+	// }
+
+	/*
+	 * Handle the create() system call.
+	 */
+	private int handleCreate(int file) {
+		Lib.debug(dbgProcess, "UserProcess.handleCreate ( " + file + " )");
+
+		if (file < 0) {
+			Lib.debug(dbgProcess, "Invalid argument");
+			return -1;
+		}
+
+		// get file name
+		String fileName = readVirtualMemoryString(file, 256);
+
+		if (fileName == null) {
+			Lib.debug(dbgProcess, "Invalid file name");
+			return -1;
+		}
+
+		// // open the file by name
+		//OpenFile f = ThreadedKernel.fileSystem.open(fileName, false);
+		// if(f != null){
+		// 	f.close();
+		// 	return -1;
+		// }
+
+		OpenFile f = ThreadedKernel.fileSystem.open(fileName, true);
+		if (f == null) {
+			Lib.debug(dbgProcess, "Failed to create file");
+			return -1;
+		}
+
+		int fd = -1;
+		for(int i = 0; i< numFiles; i++){
+			if(fileDescriptors[i] == null){
+				fileDescriptors[i] = f;
+				fd = i;
+				break;
+			}
+		}
+		if (fd == -1) {
+			Lib.debug(dbgProcess, "No available fd");
+			return -1;
+		}
+
+		// fileDescriptors[fd] = f;
+		//fileDescriptors[fd].close();
+
+		return fd;
+	}
+
+	/*
+	 * Handle the Open() system call.
+	 */
+	private int handleOpen(int file) {
+		Lib.debug(dbgProcess, "UserProcess.handleOpen ( " + file + " )");
+
+		if (file < 0) {
+			Lib.debug(dbgProcess, "Invalid argument");
+			return -1;
+		}
+
+		String filename = readVirtualMemoryString(file, 256);
+		if(filename == null){
+			Lib.debug(dbgProcess, "invalid file name");
+		}
+
+		//open the file without creating new one.
+		OpenFile f = ThreadedKernel.fileSystem.open(filename, false);
+		if (f == null) {
+			Lib.debug(dbgProcess, "Failed to open file");
+			return -1;
+		}
+
+		int fd = -1;
+		for(int i = 0; i< numFiles; i++){
+			if(fileDescriptors[i] == null){
+				fileDescriptors[i] = f;
+				fd = i;
+				break;
+			}
+		}
+		if (fd == -1) {
+			Lib.debug(dbgProcess, "No available fd");
+			return -1;
+		}
+
+
+		return fd;
+	}
+
+	/*
+	 * Handle the read() system call.
+	 */
+	private int handleRead(int fd, int vaddr, int length){
+		//Lib.debug(dbgProcess, "UserProcess.handleRead ( " + fd + " )");
+
+		if (fd < 0 || fd >= numFiles || vaddr < 0 || length < 0) {
+			Lib.debug(dbgProcess, "Invalid arguments");
+			return -1;
+		}
+
+		OpenFile f = fileDescriptors[fd];
+		if(f == null){
+			Lib.debug(dbgProcess, "Invalid fd");
+			return -1;
+		}
+		length = Math.min(length, f.length());
+
+		byte[] buff = new byte[length];
+		int readByte = f.read(buff,0,length);
+		if(readByte == -1){
+			Lib.debug(dbgProcess, "Fail to read file");
+			return -1;
+		}
+		
+		//store information in the virtual memeory address
+		int count = writeVirtualMemory(vaddr, buff);
+		return count;
+	}
+
+	/*
+	 * Handle the write() system call.
+	 */
+	private int handleWrite(int fd, int vaddr, int length) {
+		Lib.debug(dbgProcess, "UserProcess.handlewrite ( " + fd + " )");
+
+		Lib.debug(dbgProcess, "vaddr:" + vaddr);		
+		if (fd < 0 || fd >= numFiles || vaddr < 0 || length < 0 || vaddr > initialSP || length > numPages * pageSize) {
+			Lib.debug(dbgProcess, "Invalid arguments");
+			return -1;
+		}
+
+		OpenFile f = fileDescriptors[fd];
+		if(f == null){
+			Lib.debug(dbgProcess, "Invalid fd");
+			return -1;
+		}
+
+		byte[] buff = new byte[length];
+		//Lib.debug(dbgProcess, "fd:" + fd);
+		//Lib.debug(dbgProcess, "length:" + length);		
+		//int writeByte = readVirtualMemory(vaddr, buff);
+		//int writeByte = f.read(vaddr,buff,0,length);
+		int writeByte = readVirtualMemory(vaddr,buff,0,length);
+
+		if (writeByte < 0){
+			return -1;
+		}
+		Lib.debug(dbgProcess, "writebyte:" + writeByte);
+
+		int count = fileDescriptors[fd].write(buff, 0, writeByte);
+		
+		//Lib.debug(dbgProcess, "count:" + count);
+
+		if(count == -1){
+			Lib.debug(dbgProcess, "Fail to write file");
+			return -1;
+		}
+
+		return count;
+	}
+
+	/*
+	 * Handle the close() system call.
+	 */
+	private int handleClose(int fd) {
+		Lib.debug(dbgProcess, "UserProcess.handleclose ( " + fd + " )");
+
+		if (fd < 0 || fd >= numFiles ) {
+			Lib.debug(dbgProcess, "Invalid argument");
+			return -1;
+		}
+
+		OpenFile f = fileDescriptors[fd];
+
+		if(f == null){
+			Lib.debug(dbgProcess, "Invalid file descirptor");
+			return -1;
+		}
+
+		f.close();
+		fileDescriptors[fd] = null;
+
+		return 0;
+	}
+
+	/*
+	 * Handle the unlink() system call.
+	 */
+	private int handleUnlink(int fd) {
+		if (fd < 0 || fd >= numFiles ) {
+			Lib.debug(dbgProcess, "Invalid argument");
+			return -1;
+		}
+
+		String fileName = readVirtualMemoryString(fd, 256);
+		if (fileName == null) {
+			Lib.debug(dbgProcess, "Invalid file name");
+			return -1;
+		}
+
+		OpenFile f = ThreadedKernel.fileSystem.open(fileName, false);
+		if(f == null){
+			return -1;
+		}
+		f.close();
+
+		boolean success = ThreadedKernel.fileSystem.remove(fileName);
+
+		if (!success) {
+			Lib.debug(dbgProcess, "Failed to remove file");
+			return -1;
+		}
+
+		return 0;
+
+	}
+	
+
 	private static final int syscallHalt = 0, syscallExit = 1, syscallExec = 2,
 			syscallJoin = 3, syscallCreate = 4, syscallOpen = 5,
 			syscallRead = 6, syscallWrite = 7, syscallClose = 8,
@@ -469,6 +744,23 @@ public class UserProcess {
 			return handleHalt();
 		case syscallExit:
 			return handleExit(a0);
+		// case syscallExec:
+		// 	return handleExec(a0, a1, a2);
+		// case syscallJoin:
+
+		case syscallCreate:
+			return handleCreate(a0);
+		case syscallOpen:
+			return handleOpen(a0);
+		case syscallRead:
+			return handleRead(a0,a1,a2);
+		case syscallWrite:
+			return handleWrite(a0,a1,a2);
+		case syscallClose:
+			return handleClose(a0);
+		case syscallUnlink:
+			return handleUnlink(a0);
+
 
 		default:
 			Lib.debug(dbgProcess, "Unknown syscall " + syscall);
@@ -504,6 +796,8 @@ public class UserProcess {
 			Lib.assertNotReached("Unexpected exception");
 		}
 	}
+	/** The storage of fileDesiptors */
+	protected OpenFile[] fileDescriptors;
 
 	/** The program being run by this process. */
 	protected Coff coff;
@@ -527,4 +821,6 @@ public class UserProcess {
 	private static final int pageSize = Processor.pageSize;
 
 	private static final char dbgProcess = 'a';
+
+	private static final int numFiles = 16;
 }
