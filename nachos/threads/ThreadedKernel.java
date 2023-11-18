@@ -51,7 +51,7 @@ public class ThreadedKernel extends Kernel {
 		// //task2 : condition variable
 		// Semaphore.selfTest();
 		// Condition2.selfTest();
-		// // Condition.selfTest();
+		// Condition.selfTest();
 		// //task3 : join
 		// KThread.selfTest();
 		// SynchList.selfTest();

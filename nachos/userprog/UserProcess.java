@@ -7,6 +7,7 @@ import nachos.vm.*;
 import java.util.*;
 
 import java.io.EOFException;
+import java.io.FileDescriptor;
 
 /**
  * Encapsulates the state of a user process that is not contained in its user
@@ -32,6 +33,10 @@ public class UserProcess {
 		pageTable = new TranslationEntry[numPhysPages];
 		for (int i = 0; i < numPhysPages; i++)
 			pageTable[i] = new TranslationEntry(i, i, true, false, false, false);
+		
+		fileDescriptors = new OpenFile[numFiles];
+		fileDescriptors[0] = UserKernel.console.openForReading();
+		fileDescriptors[1] = UserKernel.console.openForWriting();
 	}
 
 	/**
@@ -81,6 +86,7 @@ public class UserProcess {
 	 * Called by <tt>UThread.saveState()</tt>.
 	 */
 	public void saveState() {
+		
 	}
 
 	/**
@@ -395,10 +401,7 @@ public class UserProcess {
 	private int handleExit(int status) {
 		Machine.autoGrader().finishingCurrentProcess(status);
 		Lib.debug(dbgProcess, "UserProcess.handleExit (" + status + ")");
-
-		//TODO: close filedescriptor...
-
-		//if it has parent, update parent's child map
+		// for now, unconditionally terminate with just one process
 		if(parentProcess != null){
 			if(!normalExited){
 				//set current PID's exit status in parent's childProcess list
@@ -557,6 +560,19 @@ public class UserProcess {
 			return handleHalt();
 		case syscallExit:
 			return handleExit(a0);
+
+		case syscallCreate:
+			return handleCreate(a0);
+		case syscallOpen:
+			return handleOpen(a0);
+		case syscallRead:
+			return handleRead(a0,a1,a2);
+		case syscallWrite:
+			return handleWrite(a0,a1,a2);
+		case syscallClose:
+			return handleClose(a0);
+		case syscallUnlink:
+			return handleUnlink(a0);
 		case syscallExec:
             return handleExec(a0, a1, a2);
 		case syscallJoin:
@@ -597,6 +613,8 @@ public class UserProcess {
 			Lib.assertNotReached("Unexpected exception");
 		}
 	}
+	/** The storage of fileDesiptors */
+	protected OpenFile[] fileDescriptors;
 
 	/** The program being run by this process. */
 	protected Coff coff;
@@ -669,4 +687,6 @@ public class UserProcess {
 		this.childProcesses.get(pid).setSecond(status);
 		return status;
 	}
+
+	private static final int numFiles = 16;
 }
