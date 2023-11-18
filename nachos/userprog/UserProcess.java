@@ -551,6 +551,7 @@ public class UserProcess {
 	 * @return the value to be returned to the user.
 	 */
 	public int handleSyscall(int syscall, int a0, int a1, int a2, int a3) {
+		System.out.print(syscall);
 		switch (syscall) {
 		case syscallHalt:
 			return handleHalt();
