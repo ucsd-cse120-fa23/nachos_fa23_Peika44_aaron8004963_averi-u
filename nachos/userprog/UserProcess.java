@@ -4,6 +4,7 @@ import nachos.machine.*;
 import nachos.threads.*;
 import nachos.userprog.*;
 import nachos.vm.*;
+import java.util.*;
 
 import java.io.EOFException;
 import java.io.FileDescriptor;
@@ -25,6 +26,9 @@ public class UserProcess {
 	 * Allocate a new process.
 	 */
 	public UserProcess() {
+		this.PID = PIDCounter ++;
+		totalProcess++;
+
 		int numPhysPages = Machine.processor().getNumPhysPages();
 		pageTable = new TranslationEntry[numPhysPages];
 		for (int i = 0; i < numPhysPages; i++)
@@ -380,8 +384,12 @@ public class UserProcess {
 	 */
 	private int handleHalt() {
 		Lib.debug(dbgProcess, "UserProcess.handleHalt");
+		if(PID == 0){
+			Machine.halt();
+		}else{
+			return -1;
+		}
 
-		Machine.halt();
 
 		Lib.assertNotReached("Machine.halt() did not halt machine!");
 		return 0;
@@ -391,284 +399,91 @@ public class UserProcess {
 	 * Handle the exit() system call.
 	 */
 	private int handleExit(int status) {
-	        // Do not remove this call to the autoGrader...
 		Machine.autoGrader().finishingCurrentProcess(status);
-		// ...and leave it as the top of handleExit so that we
-		// can grade your implementation.
-
 		Lib.debug(dbgProcess, "UserProcess.handleExit (" + status + ")");
 		// for now, unconditionally terminate with just one process
-		Kernel.kernel.terminate();
+		if(parentProcess != null){
+			if(!normalExited){
+				//set current PID's exit status in parent's childProcess list
+				parentProcess.setStatus(PID, 0);
+			}else{
+				parentProcess.setStatus(PID, status);
+			}
+			childExitCondition.wake();
+		}
 
-		return 0;
+		//if this is the last process
+		totalProcess--;
+		if(totalProcess==0){
+			Kernel.kernel.terminate();
+		}
+
+		KThread.finish();
+		return status;
 	}
 
-	// /*
-	//  * Handel the Exec() system call
-	//  */
-	// private int handleExec(int file, int argc, int argv) {
-	// 	Lib.debug(dbgProcess, "UserProcess.handleExec (" + file + ", " + argc + ", " + argv + ")");
-
-	// 	if (file < 0 || argc < 0 || argv < 0) {
-	// 		Lib.debug(dbgProcess, "Invalid arguments");
-	// 		return -1;
-	// 	}
-
-	// 	String fileName = readVirtualMemoryString(file, 256);
-	// 	if (fileName == null) {
-	// 		Lib.debug(dbgProcess, "Invalid file name");
-	// 		return -1;
-	// 	}
-
-	// 	String[] args = new String[argc];
-	// 	for (int i = 0; i < argc; i++) {
-	// 		byte[] arg = new byte[4];
-	// 		int bytesRead = readVirtualMemory(argv + i * 4, arg);
-	// 		if (bytesRead != 4) {
-	// 			Lib.debug(dbgProcess, "Invalid argument");
-	// 			return -1;
-	// 		}
-	// 		int argAddr = Lib.bytesToInt(arg, 0);
-	// 		args[i] = readVirtualMemoryString(argAddr, 256);
-	// 		if (args[i] == null) {
-	// 			Lib.debug(dbgProcess, "Invalid argument");
-	// 			return -1;
-	// 		}
-	// 	}
-
-	// 	thread = new UThread(this);
-	// 	return thread.fork();
-	// }
-
-	// /*
-	//  * Handle the join() system call.
-	//  */
-	// private int handleJoin(int pid, int status) {
-	// 	Lib.debug(dbgProcess, "UserProcess.handleJoin (" + pid + ", " + status + ")");
-
-	// 	if (pid < 0 || status < 0) {
-	// 		Lib.debug(dbgProcess, "Invalid arguments");
-	// 		return -1;
-	// 	}
-	// }
-
-	/*
-	 * Handle the create() system call.
-	 */
-	private int handleCreate(int file) {
-		//Lib.debug(dbgProcess, "UserProcess.handleCreate ( " + file + " )");
-
-		if (file < 0) {
-			Lib.debug(dbgProcess, "Invalid argument");
+	private int handleExec(int fileNameAddr, int argc, int argvAddr) {
+		if (fileNameAddr == 0 || argc < 0) {
 			return -1;
 		}
-
-		// get file name
-		String fileName = readVirtualMemoryString(file, 256);
-
-		if (fileName == null) {
-			Lib.debug(dbgProcess, "Invalid file name");
+	
+		String fileName = readVirtualMemoryString(fileNameAddr, 256); // Limit filename length
+		if (fileName == null || !fileName.endsWith(".coff")) {
 			return -1;
 		}
+	
+		//get args
+		String[] args = new String[argc];
+		for (int i = 0; i < argc; i++) {
+			
+			//get an argv's element(4-bytes pointer) to buffer
+			byte[] buffer = new byte[4]; 
+			if (readVirtualMemory(argvAddr + i * 4, buffer) != 4) {  
+				return -1;
+			}
+			int argPtr = Lib.bytesToInt(buffer, 0);
 
-		// // open the file by name
-		//OpenFile f = ThreadedKernel.fileSystem.open(fileName, false);
-		// if(f != null){
-		// 	f.close();
-		// 	return -1;
-		// }
-
-		OpenFile f = ThreadedKernel.fileSystem.open(fileName, true);
-		if (f == null) {
-			Lib.debug(dbgProcess, "Failed to create file");
-			return -1;
-		}
-
-		int fd = -1;
-		for(int i = 0; i< numFiles; i++){
-			if(fileDescriptors[i] == null){
-				fileDescriptors[i] = f;
-				fd = i;
-				break;
+			//store to args
+			args[i] = readVirtualMemoryString(argPtr, 256); // Limit arg length
+			if (args[i] == null) {
+				return -1;
 			}
 		}
-		if (fd == -1) {
-			Lib.debug(dbgProcess, "No available fd");
+	
+		//create new process
+		UserProcess newProcess = newUserProcess();
+		if (newProcess.execute(fileName, args)) {
+			childProcesses.put(newProcess.getPID(), new Pair<>(newProcess, -1));
+			return newProcess.getPID();
+		} else {
 			return -1;
 		}
-
-		// fileDescriptors[fd] = f;
-		//fileDescriptors[fd].close();
-
-		return fd;
 	}
+	
+	public int handleJoin(int childPID, int statusPointer) {
+		processLock.acquire();
 
-	/*
-	 * Handle the Open() system call.
-	 */
-	private int handleOpen(int file) {
-		//Lib.debug(dbgProcess, "UserProcess.handleOpen ( " + file + " )");
-
-		if (file < 0) {
-			Lib.debug(dbgProcess, "Invalid argument");
-			return -1;
+		UserProcess child = getChildProcess(childPID);
+		if (child == null) {
+			processLock.release();
+			return -1; 
 		}
 
-		String filename = readVirtualMemoryString(file, 256);
-		if(filename == null){
-			Lib.debug(dbgProcess, "invalid file name");
+		//sleep untill child.hasExited
+		while (getStatus(childPID) == -1) {
+			childExitCondition.sleep();
+		}
+		//wakeup&get exit status of the child
+		int status = getStatus(childPID);
+		childProcesses.remove(childPID);
+
+		if (statusPointer != 0) {
+			byte[] statusBytes = Lib.bytesFromInt(status);
+			writeVirtualMemory(statusPointer, statusBytes);
 		}
 
-		//open the file without creating new one.
-		OpenFile f = ThreadedKernel.fileSystem.open(filename, false);
-		if (f == null) {
-			Lib.debug(dbgProcess, "Failed to open file");
-			return -1;
-		}
-
-		int fd = -1;
-		for(int i = 0; i< numFiles; i++){
-			if(fileDescriptors[i] == null){
-				fileDescriptors[i] = f;
-				fd = i;
-				break;
-			}
-		}
-		if (fd == -1) {
-			Lib.debug(dbgProcess, "No available fd");
-			return -1;
-		}
-
-
-		return fd;
-	}
-
-	/*
-	 * Handle the read() system call.
-	 */
-	private int handleRead(int fd, int vaddr, int length){
-		//Lib.debug(dbgProcess, "UserProcess.handleRead ( " + fd + " )");
-
-		if (fd < 0 || fd >= numFiles || vaddr < 0 || length < 0) {
-			Lib.debug(dbgProcess, "Invalid arguments");
-			return -1;
-		}
-
-		OpenFile f = fileDescriptors[fd];
-		if(f == null){
-			Lib.debug(dbgProcess, "Invalid fd");
-			return -1;
-		}
-		length = Math.min(length, f.length());
-
-		byte[] buff = new byte[length];
-		int readByte = f.read(buff,0,length);
-		if(readByte == -1){
-			Lib.debug(dbgProcess, "Fail to read file");
-			return -1;
-		}
-		
-		//store information in the virtual memeory address
-		int count = writeVirtualMemory(vaddr, buff);
-		return count;
-	}
-
-	/*
-	 * Handle the write() system call.
-	 */
-	private int handleWrite(int fd, int vaddr, int length) {
-		//Lib.debug(dbgProcess, "UserProcess.handlewrite ( " + fd + " )");
-
-		//Lib.debug(dbgProcess, "vaddr:" + vaddr);		
-		if (fd < 0 || fd >= numFiles || vaddr < 0 || length < 0 || vaddr > initialSP || length > numPages * pageSize) {
-			Lib.debug(dbgProcess, "Invalid arguments");
-			return -1;
-		}
-
-		OpenFile f = fileDescriptors[fd];
-		if(f == null){
-			Lib.debug(dbgProcess, "Invalid fd");
-			return -1;
-		}
-
-		byte[] buff = new byte[length];
-		//Lib.debug(dbgProcess, "fd:" + fd);
-		//Lib.debug(dbgProcess, "length:" + length);		
-		//int writeByte = readVirtualMemory(vaddr, buff);
-		//int writeByte = f.read(vaddr,buff,0,length);
-		int writeByte = readVirtualMemory(vaddr,buff,0,length);
-
-		if (writeByte < 0){
-			return -1;
-		}
-		//Lib.debug(dbgProcess, "writebyte:" + writeByte);
-
-		int count = fileDescriptors[fd].write(buff, 0, writeByte);
-		
-		//Lib.debug(dbgProcess, "count:" + count);
-
-		if(count == -1){
-			Lib.debug(dbgProcess, "Fail to write file");
-			return -1;
-		}
-
-		return count;
-	}
-
-	/*
-	 * Handle the close() system call.
-	 */
-	private int handleClose(int fd) {
-		//Lib.debug(dbgProcess, "UserProcess.handleclose ( " + fd + " )");
-
-		if (fd < 0 || fd >= numFiles ) {
-			Lib.debug(dbgProcess, "Invalid argument");
-			return -1;
-		}
-
-		OpenFile f = fileDescriptors[fd];
-
-		if(f == null){
-			Lib.debug(dbgProcess, "Invalid file descirptor");
-			return -1;
-		}
-
-		f.close();
-		fileDescriptors[fd] = null;
-
-		return 0;
-	}
-
-	/*
-	 * Handle the unlink() system call.
-	 */
-	private int handleUnlink(int fd) {
-		if (fd < 0 || fd >= numFiles ) {
-			Lib.debug(dbgProcess, "Invalid argument");
-			return -1;
-		}
-
-		String fileName = readVirtualMemoryString(fd, 256);
-		if (fileName == null) {
-			Lib.debug(dbgProcess, "Invalid file name");
-			return -1;
-		}
-
-		OpenFile f = ThreadedKernel.fileSystem.open(fileName, false);
-		if(f == null){
-			return -1;
-		}
-		f.close();
-
-		boolean success = ThreadedKernel.fileSystem.remove(fileName);
-
-		if (!success) {
-			Lib.debug(dbgProcess, "Failed to remove file");
-			return -1;
-		}
-
-		return 0;
-
+		processLock.release();
+		return status;
 	}
 	
 
@@ -739,15 +554,12 @@ public class UserProcess {
 	 * @return the value to be returned to the user.
 	 */
 	public int handleSyscall(int syscall, int a0, int a1, int a2, int a3) {
+		System.out.print(syscall);
 		switch (syscall) {
 		case syscallHalt:
 			return handleHalt();
 		case syscallExit:
 			return handleExit(a0);
-		// case syscallExec:
-		// 	return handleExec(a0, a1, a2);
-		// case syscallJoin:
-
 		case syscallCreate:
 			return handleCreate(a0);
 		case syscallOpen:
@@ -760,8 +572,10 @@ public class UserProcess {
 			return handleClose(a0);
 		case syscallUnlink:
 			return handleUnlink(a0);
-
-
+		case syscallExec:
+            return handleExec(a0, a1, a2);
+		case syscallJoin:
+			return handleJoin(a0, a1);
 		default:
 			Lib.debug(dbgProcess, "Unknown syscall " + syscall);
 			Lib.assertNotReached("Unknown system call!");
@@ -793,6 +607,8 @@ public class UserProcess {
 		default:
 			Lib.debug(dbgProcess, "Unexpected exception: "
 					+ Processor.exceptionNames[cause]);
+				normalExited = false;
+				handleExit(0);
 			Lib.assertNotReached("Unexpected exception");
 		}
 	}
@@ -821,6 +637,55 @@ public class UserProcess {
 	private static final int pageSize = Processor.pageSize;
 
 	private static final char dbgProcess = 'a';
-
+	
+	private int PID;
+	private static int PIDCounter = 0;
+	private HashMap<Integer, Pair<UserProcess, Integer>> childProcesses;//-1 runing,1 exited normaly,0 exception
+	private UserProcess parentProcess;
+	private Lock processLock = new Lock();
+	private Condition childExitCondition = new Condition(processLock);
+	private static int totalProcess = 0;
+	private static boolean normalExited = true;
 	private static final int numFiles = 16;
+
+	public class Pair<U, V> {
+		private U first;
+		private V second;
+	
+		public Pair(U first, V second) {
+			this.first = first;
+			this.second = second;
+		}
+	
+		public U getFirst() {
+			return first;
+		}
+	
+		public V getSecond() {
+			return second;
+		}
+
+		public V setSecond(V data) {
+			this.second = data;
+			return data;
+		}
+	}
+	
+	public int getPID() {
+        return PID;
+    }
+
+    public UserProcess getChildProcess(int pid) {
+		return childProcesses.get((Integer)pid).getFirst();
+    }
+
+	public int getStatus (int pid){
+		return childProcesses.get(pid).getSecond();
+	}
+
+	public int setStatus(int pid,int status){
+		this.childProcesses.get(pid).setSecond(status);
+		return status;
+	}
+
 }

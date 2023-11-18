@@ -173,13 +173,13 @@ public class Condition {
         //for (int i = 0; i < 50; i++) { KThread.currentThread().yield(); }
     }
 
-	public static void selfTest() {
-		System.out.println("\n" +
-			"-----------------------------givencvTest5()---------------------------------------"
-			);
+	// public static void selfTest() {
+	// 	System.out.println("\n" +
+	// 		"-----------------------------givencvTest5()---------------------------------------"
+	// 		);
 			
-		 cvTest5();
-	}
+	// 	cvTest5();
+	// }
 	private Lock conditionLock;
 
 	private LinkedList<Semaphore> waitQueue;
