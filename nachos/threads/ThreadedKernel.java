@@ -57,9 +57,9 @@ public class ThreadedKernel extends Kernel {
 		// SynchList.selfTest();
 		// Rendezvous.selfTest();
 
-		if (Machine.bank() != null) {
-			ElevatorBank.selfTest();
-		}
+		// if (Machine.bank() != null) {
+		// 	ElevatorBank.selfTest();
+		// }
 	}
 
 	/**
