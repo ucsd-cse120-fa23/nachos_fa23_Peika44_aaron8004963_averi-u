@@ -378,8 +378,12 @@ public class UserProcess {
 	 */
 	private int handleHalt() {
 		Lib.debug(dbgProcess, "UserProcess.handleHalt");
+		if(PID == 0){
+			Machine.halt();
+		}else{
+			return -1;
+		}
 
-		Machine.halt();
 
 		Lib.assertNotReached("Machine.halt() did not halt machine!");
 		return 0;
@@ -397,6 +401,7 @@ public class UserProcess {
 		//if it has parent, update parent's child map
 		if(parentProcess != null){
 			if(!normalExited){
+				//set current PID's exit status in parent's childProcess list
 				parentProcess.setStatus(PID, 0);
 			}else{
 				parentProcess.setStatus(PID, status);
@@ -409,7 +414,7 @@ public class UserProcess {
 		if(totalProcess==0){
 			Kernel.kernel.terminate();
 		}
-		
+
 		KThread.finish();
 		return status;
 	}
