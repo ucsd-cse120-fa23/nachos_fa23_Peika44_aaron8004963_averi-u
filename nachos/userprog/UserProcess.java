@@ -261,6 +261,11 @@ public class UserProcess {
 			// System.arraycopy(data, offset, memory, phyAdd, amount);
 			//offset +=1;
 			// Machine.processor().getMemory()[phyAdd] = data[offset++];
+			int remainingInPage = pageSize - vpnOff;
+			int remainingInData = amount - i;
+			int chunkSize = Math.min(remainingInPage, remainingInData);
+
+			// Use System.arraycopy for efficiency
 			System.arraycopy(data, offset, memory, phyAdd, chunkSize);
 
 			// Update offset, vaddr, and i for next iteration
