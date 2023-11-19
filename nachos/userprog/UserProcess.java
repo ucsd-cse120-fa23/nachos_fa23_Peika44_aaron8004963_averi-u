@@ -302,7 +302,6 @@ public class UserProcess {
 
 
 		// return amount;
-		//*/
 
 		
 		// //end 
