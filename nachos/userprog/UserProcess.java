@@ -590,13 +590,15 @@ public class UserProcess {
 			Lib.debug(dbgProcess, "Invalid fd");
 			return -1;
 		}
-		if(f.length() < 0){
-			return -1;
+		
+		// Lib.debug(dbgProcess, "Length" + length);
+		// Lib.debug(dbgProcess, "Length" + f.length());
+		if(f.length() >= 0){
+
+			length = Math.min(length, f.length());
+	
 		}
-		Lib.debug(dbgProcess, "Length" + length);
-		Lib.debug(dbgProcess, "Length" + f.length());
-		length = Math.min(length, f.length());
-		Lib.debug(dbgProcess, "Length" + length);
+		//Lib.debug(dbgProcess, "Length" + length);
 		byte[] buff = new byte[length];
 		int readByte = f.read(buff, 0, length);
 		if (readByte == -1) {
@@ -891,7 +893,7 @@ public class UserProcess {
 	 * @return the value to be returned to the user.
 	 */
 	public int handleSyscall(int syscall, int a0, int a1, int a2, int a3) {
-		System.out.print(syscall);
+		//System.out.print(syscall);
 		switch (syscall) {
 			case syscallHalt:
 				return handleHalt();
