@@ -683,6 +683,7 @@ public class UserProcess {
 		if (f == null) {
 			return -1;
 		}
+		// f.close();
 		boolean success = ThreadedKernel.fileSystem.remove(fileName);
 		if (!success) {
 			Lib.debug(dbgProcess, "Failed to remove file");
@@ -744,46 +745,22 @@ public class UserProcess {
 	}
 
 	private int handleExec(int fileNameAddr, int argc, int argvAddr) {
-		if (fileNameAddr == 0 || argc < 0) {
+		if (!isValidExecRequest(fileNameAddr, argc)) {
 			return -1;
 		}
-
-		Lib.debug(dbgProcess, "for loop started");
-		
+	
 		String fileName = readVirtualMemoryString(fileNameAddr, 256); // Limit filename length
-		if (fileName == null || !fileName.endsWith(".coff")) {
+		if (!isValidFileName(fileName)) {
 			return -1;
 		}
-
-		// get args
-		Lib.debug(dbgProcess, "for loop started");
-		String[] args = new String[argc];
-		for (int i = 0; i < argc; i++) {
-
-			// get an argv's element(4-bytes pointer) to buffer
-			byte[] buffer = new byte[4];
-			// if (readVirtualMemory(argvAddr + i * 4, buffer) != 4) {
-			// 	return -1;
-			// }
-			readVirtualMemory(argvAddr + i * 4, buffer);
-			int argPtr = Lib.bytesToInt(buffer, 0);
-
-			// store to args
-			args[i] = readVirtualMemoryString(argPtr, 256); // Limit arg length
-			if (args[i] == null) {
-				return -1;
-			}
+	
+		String[] args = getArguments(argvAddr, argc);
+		if (args == null) {
+			return -1;
 		}
-		Lib.debug(dbgProcess, "for loop finished");
-		// create new process
-		UserProcess newProcess = newUserProcess();
-		newProcess.parentProcess = this;
-
-		if (newProcess.execute(fileName, args)) {
-			childProcesses.put(newProcess.getPID(), new Pair<>(newProcess, -1));
-			return newProcess.getPID();
-		}
-		return -1;
+	
+		UserProcess newProcess = createAndExecuteNewProcess(fileName, args);
+		return newProcess != null ? newProcess.getPID() : -1;
 	}
 
 	public int handleJoin(int childPID, int statusPointer) {
@@ -1025,4 +1002,52 @@ public class UserProcess {
 		return totalProcess == 0;
 	}
 
+	private boolean isValidExecRequest(int fileNameAddr, int argc) {
+		return fileNameAddr != 0 && argc >= 0;
+	}
+	
+	private boolean isValidFileName(String fileName) {
+		return fileName != null && fileName.endsWith(".coff");
+	}
+	
+	private String[] getArguments(int argvAddr, int argc) {
+		Lib.debug(dbgProcess, "Reading arguments for exec");
+	
+		String[] args = new String[argc];
+		for (int i = 0; i < argc; i++) {
+			int argPtr = getArgumentPointer(argvAddr, i);
+			if (argPtr == -1) {
+				return null;
+			}
+	
+			args[i] = readVirtualMemoryString(argPtr, 256); // Limit arg length
+			if (args[i] == null) {
+				return null;
+			}
+		}
+	
+		Lib.debug(dbgProcess, "Arguments read successfully");
+		return args;
+	}
+	
+	private int getArgumentPointer(int argvAddr, int index) {
+		byte[] buffer = new byte[4];
+		if (readVirtualMemory(argvAddr + index * 4, buffer) != 4) {
+			return -1;
+		}
+		return Lib.bytesToInt(buffer, 0);
+	}
+	
+	private UserProcess createAndExecuteNewProcess(String fileName, String[] args) {
+		Lib.debug(dbgProcess, "Creating new process for execution");
+	
+		UserProcess newProcess = newUserProcess();
+		newProcess.parentProcess = this;
+	
+		if (newProcess.execute(fileName, args)) {
+			childProcesses.put(newProcess.getPID(), new Pair<>(newProcess, -1));
+			return newProcess;
+		}
+		return null;
+	}
 }
