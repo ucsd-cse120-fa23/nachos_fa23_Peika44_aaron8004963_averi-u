@@ -30,10 +30,7 @@ public class UserProcess {
 		totalProcess++;
 		childProcesses = new HashMap<Integer, Pair<UserProcess, Integer>>();
 
-		// int numPhysPages = Machine.processor().getNumPhysPages();
-		// pageTable = new TranslationEntry[numPhysPages];
-		// for (int i = 0; i < numPhysPages; i++)
-		// 	pageTable[i] = new TranslationEntry(i, i, true, false, false, false);
+
 
 		fileDescriptors = new OpenFile[numFiles];
 		fileDescriptors[0] = UserKernel.console.openForReading();
@@ -187,28 +184,7 @@ public class UserProcess {
 		// if (vaddr < 0 || length < 0)
         // return 0;
 
-		// int amountTransferred = 0;
-		// while (length > 0) {
-		// 	int vpn = Processor.pageFromAddress(vaddr);
-		// 	int voffset = Processor.offsetFromAddress(vaddr);
 
-		// 	if (vpn < 0 || vpn >= pageTable.length || !pageTable[vpn].valid || pageTable[vpn].readOnly)
-		// 		break;
-
-		// 	int paddr = Processor.makeAddress(pageTable[vpn].ppn, voffset);
-		// 	int amount = Math.min(length, pageSize - voffset);
-			
-		// 	if (paddr < 0 || paddr >= memory.length)
-		// 		break;
-
-		// 	System.arraycopy(data, offset, memory, paddr, amount);
-		// 	vaddr += amount;
-		// 	offset += amount;
-		// 	length -= amount;
-		// 	amountTransferred += amount;
-		// }
-
-		// return amountTransferred;
 		// //modified end 
 	}
 
@@ -252,30 +228,7 @@ public class UserProcess {
 
 			
 		int amount = Math.min(length, memory.length - vaddr);
-		//System.arraycopy(data, offset, memory, vaddr, amount);
 
-		// for(int i = 0; i < amount; i++){
-			// int vpn = Processor.pageFromAddress(vaddr + i);
-			// int vpnOff = Processor.offsetFromAddress(vaddr + i);
-			// int ppn = pageTable[vpn].ppn;
-			
-			// int phyAdd = pageSize*ppn + vpnOff;
-			// // System.arraycopy(data, offset, memory, phyAdd, amount);
-			// //offset +=1;
-			// Machine.processor().getMemory()[phyAdd] = data[offset++];
-			// int remainingInPage = pageSize - vpnOff;
-			// int remainingInData = amount - i;
-			// int chunkSize = Math.min(remainingInPage, remainingInData);
-
-			// System.arraycopy(data, offset, memory, phyAdd, chunkSize);
-
-			// // Update offset, vaddr, and i for next iteration
-			// offset += chunkSize;
-			// vaddr += chunkSize;
-			// i += chunkSize - 1;
-			
-
-		// }
 		int i = 0;
 		while (i < amount) {
 			int vpn = Processor.pageFromAddress(vaddr + i);
@@ -287,15 +240,12 @@ public class UserProcess {
 			int ppn = pageTable[vpn].ppn;
 			int phyAdd = pageSize * ppn + vpnOff;
 
-			// Calculate the maximum chunk size
 			int remainingInPage = pageSize - vpnOff;
 			int remainingInData = amount - i;
 			int chunkSize = Math.min(remainingInPage, remainingInData);
 
-			// Use System.arraycopy for efficiency
 			System.arraycopy(data, offset + i, memory, phyAdd, chunkSize);
 
-			// Update i for next iteration
 			i += chunkSize;
 		}
 		return i; 
@@ -304,7 +254,7 @@ public class UserProcess {
 		// return amount;
 
 		
-		// //end 
+		// end 
 	}
 
 	/**
@@ -435,12 +385,9 @@ public class UserProcess {
 		pageTable = new TranslationEntry[numPages];
 		for (int i = 0; i < numPages; i++){
 			int phy = UserKernel.freePages.removeFirst();
-			// if(CoffSection.isReadOnly()){
-			// 	pageTable[i] = new TranslationEntry(i, phy, true, true, false, false);
-			// }
-			// else{
+
 			pageTable[i] = new TranslationEntry(i, phy, true, false, false, false);
-			//}
+			
 		}
 			
 
