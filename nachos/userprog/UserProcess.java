@@ -417,9 +417,9 @@ public class UserProcess {
 		}
 
 
-		int numPhysPages = Machine.processor().getNumPhysPages();
-		pageTable = new TranslationEntry[numPhysPages];
-		for (int i = 0; i < numPhysPages; i++){
+		//int numPhysPages = Machine.processor().getNumPhysPages();
+		pageTable = new TranslationEntry[numPages];
+		for (int i = 0; i < numPages; i++){
 			int phy = UserKernel.freePages.removeFirst();
 			// if(CoffSection.isReadOnly()){
 			// 	pageTable[i] = new TranslationEntry(i, phy, true, true, false, false);
@@ -736,7 +736,7 @@ public class UserProcess {
 			} else {
 				parentProcess.setStatus(PID, status);
 			}
-			childExitCondition.wake();
+			//childExitCondition.wake();
 		}
 		Lib.debug(dbgProcess, "UserProcess.handleExit (" + "finished" + ")");
 		// if this is the last process
