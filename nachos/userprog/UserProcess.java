@@ -260,7 +260,13 @@ public class UserProcess {
 			int phyAdd = pageSize*ppn + vpnOff;
 			// System.arraycopy(data, offset, memory, phyAdd, amount);
 			//offset +=1;
-			Machine.processor().getMemory()[phyAdd] = data[offset++];
+			// Machine.processor().getMemory()[phyAdd] = data[offset++];
+			System.arraycopy(data, offset, memory, phyAdd, chunkSize);
+
+			// Update offset, vaddr, and i for next iteration
+			offset += chunkSize;
+			vaddr += chunkSize;
+			i += chunkSize - 1;
 
 		}
 
