@@ -6,6 +6,7 @@ import nachos.machine.*;
  * A multi-threaded OS kernel.
  */
 public class ThreadedKernel extends Kernel {
+
 	/**
 	 * Allocate a new multi-threaded kernel.
 	 */
