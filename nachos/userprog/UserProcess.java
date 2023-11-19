@@ -683,7 +683,7 @@ public class UserProcess {
 		if (f == null) {
 			return -1;
 		}
-		f.close();
+		// f.close();
 		boolean success = ThreadedKernel.fileSystem.remove(fileName);
 		if (!success) {
 			Lib.debug(dbgProcess, "Failed to remove file");
