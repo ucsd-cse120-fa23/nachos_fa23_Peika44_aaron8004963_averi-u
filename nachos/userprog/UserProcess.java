@@ -160,7 +160,7 @@ public class UserProcess {
 		byte[] memory = Machine.processor().getMemory();
 		
 
-		/* orignal for single user process: 
+		///* orignal for single user process: 
 
 		// for now, just assume that virtual addresses equal physical addresses
 		if (vaddr < 0 || vaddr >= memory.length)
@@ -183,33 +183,33 @@ public class UserProcess {
 		}
 
 		return amount;
-		*/
-		if (vaddr < 0 || length < 0)
-        return 0;
+		
+		// if (vaddr < 0 || length < 0)
+        // return 0;
 
-		int amountTransferred = 0;
-		while (length > 0) {
-			int vpn = Processor.pageFromAddress(vaddr);
-			int voffset = Processor.offsetFromAddress(vaddr);
+		// int amountTransferred = 0;
+		// while (length > 0) {
+		// 	int vpn = Processor.pageFromAddress(vaddr);
+		// 	int voffset = Processor.offsetFromAddress(vaddr);
 
-			if (vpn < 0 || vpn >= pageTable.length || !pageTable[vpn].valid || pageTable[vpn].readOnly)
-				break;
+		// 	if (vpn < 0 || vpn >= pageTable.length || !pageTable[vpn].valid || pageTable[vpn].readOnly)
+		// 		break;
 
-			int paddr = Processor.makeAddress(pageTable[vpn].ppn, voffset);
-			int amount = Math.min(length, pageSize - voffset);
+		// 	int paddr = Processor.makeAddress(pageTable[vpn].ppn, voffset);
+		// 	int amount = Math.min(length, pageSize - voffset);
 			
-			if (paddr < 0 || paddr >= memory.length)
-				break;
+		// 	if (paddr < 0 || paddr >= memory.length)
+		// 		break;
 
-			System.arraycopy(data, offset, memory, paddr, amount);
-			vaddr += amount;
-			offset += amount;
-			length -= amount;
-			amountTransferred += amount;
-		}
+		// 	System.arraycopy(data, offset, memory, paddr, amount);
+		// 	vaddr += amount;
+		// 	offset += amount;
+		// 	length -= amount;
+		// 	amountTransferred += amount;
+		// }
 
-		return amountTransferred;
-		//modified end 
+		// return amountTransferred;
+		// //modified end 
 	}
 
 	/**
@@ -244,7 +244,7 @@ public class UserProcess {
 
 		byte[] memory = Machine.processor().getMemory();
 
-		/* orignal for single user process: 
+		///* orignal for single user process: 
 		// for now, just assume that virtual addresses equal physical addresses
 		if (vaddr < 0 || vaddr >= memory.length)
 			return 0;
@@ -265,32 +265,32 @@ public class UserProcess {
 		}
 
 		return amount;
-		*/
+		//*/
 
-		//modified: 
-		int amountTransferred = 0;
-		while (length > 0) {
-			int vpn = Processor.pageFromAddress(vaddr);
-			int voffset = Processor.offsetFromAddress(vaddr);
+		// //modified: 
+		// int amountTransferred = 0;
+		// while (length > 0) {
+		// 	int vpn = Processor.pageFromAddress(vaddr);
+		// 	int voffset = Processor.offsetFromAddress(vaddr);
 
-			if (vpn < 0 || vpn >= pageTable.length || !pageTable[vpn].valid || pageTable[vpn].readOnly)
-				break;
+		// 	if (vpn < 0 || vpn >= pageTable.length || !pageTable[vpn].valid || pageTable[vpn].readOnly)
+		// 		break;
 
-			int paddr = Processor.makeAddress(pageTable[vpn].ppn, voffset);
-			int amount = Math.min(length, pageSize - voffset);
+		// 	int paddr = Processor.makeAddress(pageTable[vpn].ppn, voffset);
+		// 	int amount = Math.min(length, pageSize - voffset);
 			
-			if (paddr < 0 || paddr >= memory.length)
-				break;
+		// 	if (paddr < 0 || paddr >= memory.length)
+		// 		break;
 
-			System.arraycopy(data, offset, memory, paddr, amount);
-			vaddr += amount;
-			offset += amount;
-			length -= amount;
-			amountTransferred += amount;
-		}
+		// 	System.arraycopy(data, offset, memory, paddr, amount);
+		// 	vaddr += amount;
+		// 	offset += amount;
+		// 	length -= amount;
+		// 	amountTransferred += amount;
+		// }
 
-		return amountTransferred;
-		//end 
+		// return amountTransferred;
+		// //end 
 	}
 
 	/**
