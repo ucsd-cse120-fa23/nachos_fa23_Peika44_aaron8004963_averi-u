@@ -385,46 +385,47 @@ public class UserProcess {
 	 * @return <tt>true</tt> if the sections were successfully loaded.
 	 */
 	protected boolean loadSections() {
-		if (numPages > Machine.processor().getNumPhysPages()) {
+		// Change to check against available free pages
+		if (numPages > UserKernel.freePhysicalPages.size()) {
 			coff.close();
 			Lib.debug(dbgProcess, "\tinsufficient physical memory");
 			return false;
 		}
 
-		//modified
+		//modified:
+	
+		pageTable = new TranslationEntry[numPages];
 		for (int i = 0; i < numPages; i++) {
-			int ppn = UserKernel.allocatePage(); // Allocate a physical page
+			int ppn = UserKernel.allocatePage(); 
 			if (ppn == -1) {
 				Lib.debug(dbgProcess, "\tinsufficient physical memory");
-				unloadSections(); // Free already allocated pages
+				unloadSections(); 
 				return false;
 			}
 			pageTable[i] = new TranslationEntry(i, ppn, true, false, false, false);
 		}
-
-
+	
 		// load sections
 		for (int s = 0; s < coff.getNumSections(); s++) {
 			CoffSection section = coff.getSection(s);
-
 			Lib.debug(dbgProcess, "\tinitializing " + section.getName()
 					+ " section (" + section.getLength() + " pages)");
-
+	
 			for (int i = 0; i < section.getLength(); i++) {
 				int vpn = section.getFirstVPN() + i;
-
-
+	
+				UserKernel.pageSem.P();  // Add synchronization
 				TranslationEntry entry = pageTable[vpn];
-            	entry.readOnly = section.isReadOnly();
-
-				// for now, just assume virtual addresses=physical addresses
-				section.loadPage(i, vpn);
+				entry.readOnly = section.isReadOnly();
+				UserKernel.pageSem.V();
+	
+				section.loadPage(i, entry.ppn);
 			}
 		}
-
+	
 		return true;
-		 
 	}
+	
 
 	/**
 	 * Release any resources allocated by <tt>loadSections()</tt>.
