@@ -697,6 +697,7 @@ public class UserProcess {
 	 */
 	private int handleHalt() {
 		Lib.debug(dbgProcess, "UserProcess.handleHalt");
+		//if the PID == 0, means root process
 		if (PID == 0) {
 			Machine.halt();
 		} else {
@@ -713,35 +714,28 @@ public class UserProcess {
 		Machine.autoGrader().finishingCurrentProcess(status);
 		Lib.debug(dbgProcess, "UserProcess.handleExit (" + status + ")");
 
-		unloadSections();
-
 		for(int i = 0; i < fileDescriptors.length; i++){
 			handleClose(i);
 		}
+		unloadSections();
+		coff.close();
 
+		//remove parent for childProcesses
 		Iterator<Map.Entry<Integer, Pair<UserProcess, Integer>>> iter = childProcesses.entrySet().iterator();
-		
 		while(iter.hasNext()){
 			Map.Entry<Integer, Pair<UserProcess, Integer>> entry = iter.next();
 			entry.getValue().getFirst().parentProcess = null;
 		}
 
-
-		coff.close();
-
 		if (parentProcess != null) {
-			if (!normalExited) {
-				// set current PID's exit status in parent's childProcess list
-				parentProcess.setStatus(PID, 0);
-			} else {
-				parentProcess.setStatus(PID, status);
-			}
-			//childExitCondition.wake();
+			// set current PID's exit status in parent's childProcess list
+			int exitStatus = normalExited ? status : 0;
+			parentProcess.setStatus(PID, exitStatus);
 		}
 		Lib.debug(dbgProcess, "UserProcess.handleExit (" + "finished" + ")");
-		// if this is the last process
+		// decress the number of total process and determine if this is the last process
 		totalProcess--;
-		if (totalProcess == 0) {
+		if (isLastP()) {
 			Kernel.kernel.terminate();
 		}
 
@@ -1026,6 +1020,10 @@ public class UserProcess {
 	public int setStatus(int pid, int status) {
 		this.childProcesses.get(pid).setSecond(status);
 		return status;
+	}
+
+	public boolean isLastP(){
+		return totalProcess == 0;
 	}
 
 }
