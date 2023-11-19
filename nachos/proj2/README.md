@@ -17,5 +17,5 @@ Manually running the program with different datasets/scenarios.
 Contributions  
 [Peike Xu]: Mainly focused on implementation of Rendezvous function. Creating multiple tests for p5 and p2 questions. Colaborate on debugging other parts.
 [Averi Yu]: I worked mainly on part 2 of this project and helped debug others. I worked on UserKernal and UserProcess classes with functions UserKernal.initialize(), UserProcess.readVirtualMemory, etc. I debugged them with the given tests and Gradescope, further adding tests. 
-[Arron Li ]: Implements p2(Condition2)&p3(KThread), writting tests for p1-4.Colaborate on debugging other parts.
+[Arron Li ]: Implements part3 of this project and Colaborate on debugging other parts. Mainly modified the handle exit, halt, join and exec.
 (random order)
