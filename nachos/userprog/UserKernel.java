@@ -2,6 +2,7 @@ package nachos.userprog;
 
 import java.util.LinkedList;
 
+
 import nachos.machine.*;
 import nachos.threads.*;
 import nachos.userprog.*;
@@ -26,6 +27,16 @@ public class UserKernel extends ThreadedKernel {
 		super.initialize(args);
 
 		console = new SynchConsole(Machine.console());
+
+		freePages = new LinkedList<Integer>();
+		int numPages = Machine.processor().getNumPhysPages();
+
+		for(int i =0; i< numPages; i++){
+			freePages.add(i);
+		}
+
+		lock = new Lock();
+		cv = new Condition(lock);
 
 		Machine.processor().setExceptionHandler(new Runnable() {
 			public void run() {
@@ -148,6 +159,14 @@ public class UserKernel extends ThreadedKernel {
 	public void terminate() {
 		super.terminate();
 	}
+
+	public static LinkedList<Integer> freePages;
+
+	public static int PID = 0;
+
+	public static Lock lock;
+
+	public static Condition cv;
 
 	/** Globally accessible reference to the synchronized console. */
 	public static SynchConsole console;
