@@ -15,7 +15,7 @@ Unit tests to ensure individual functions work as expected.
 Manually running the program with different datasets/scenarios.
 
 Contributions  
-[Peike Xu]: Mainly focused on implementation of Rendezvous function. Creating multiple tests for p5 and p2 questions. Colaborate on debugging other parts.
+[Peike Xu]: Mainly focused on implementation of Part1 by implementing creat, open, read, write, close, and unlink.Also Colaborate on debugging other parts.
 [Averi Yu]: I worked mainly on part 2 of this project and helped debug others. I worked on UserKernal and UserProcess classes with functions UserKernal.initialize(), UserProcess.readVirtualMemory, etc. I debugged them with the given tests and Gradescope, further adding tests. 
 [Arron Li ]: Implements part3 of this project and Colaborate on debugging other parts. Mainly modified the handle exit, halt, join and exec.
 (random order)
