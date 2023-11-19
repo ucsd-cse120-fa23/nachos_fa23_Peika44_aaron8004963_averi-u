@@ -11,7 +11,7 @@ import nachos.userprog.*;
  * A kernel that can support multiple user processes.
  */
 public class UserKernel extends ThreadedKernel {
-	private static LinkedList<Integer> freePhysicalPages;
+	//private static LinkedList<Integer> freePhysicalPages;
 	/**
 	 * Allocate a new user kernel.
 	 */
@@ -36,7 +36,7 @@ public class UserKernel extends ThreadedKernel {
 		}
 
 		lock = new Lock();
-		cv = new Condition(lock);
+		//cv = new Condition(lock);
 
 		Machine.processor().setExceptionHandler(new Runnable() {
 			public void run() {
@@ -44,27 +44,27 @@ public class UserKernel extends ThreadedKernel {
 			}
 		});
 		
-		//modified:
-		freePhysicalPages = new LinkedList<>();
-        int numPhysPages = Machine.processor().getNumPhysPages();
-        for (int i = 0; i < numPhysPages; i++) {
-            freePhysicalPages.add(i);
-        }
+		// //modified:
+		// freePhysicalPages = new LinkedList<>();
+        // int numPhysPages = Machine.processor().getNumPhysPages();
+        // for (int i = 0; i < numPhysPages; i++) {
+        //     freePhysicalPages.add(i);
+        // }
 	}
 
-	public static int allocatePage() {
-        boolean intStatus = Machine.interrupt().disable();
-        Integer page = freePhysicalPages.isEmpty() ? null : freePhysicalPages.removeFirst();
-        Machine.interrupt().restore(intStatus);
-        return (page != null) ? page : -1;
-    }
+	// public static int allocatePage() {
+    //     boolean intStatus = Machine.interrupt().disable();
+    //     Integer page = freePhysicalPages.isEmpty() ? null : freePhysicalPages.removeFirst();
+    //     Machine.interrupt().restore(intStatus);
+    //     return (page != null) ? page : -1;
+    // }
 
-    public static void freePage(int pageNumber) {
-        boolean intStatus = Machine.interrupt().disable();
-        freePhysicalPages.add(pageNumber);
-        Machine.interrupt().restore(intStatus);
-    }
-	//modified ended.
+    // public static void freePage(int pageNumber) {
+    //     boolean intStatus = Machine.interrupt().disable();
+    //     freePhysicalPages.add(pageNumber);
+    //     Machine.interrupt().restore(intStatus);
+    // }
+	// //modified ended.
 
 	/**
 	 * Test the console device.
@@ -166,7 +166,7 @@ public class UserKernel extends ThreadedKernel {
 
 	public static Lock lock;
 
-	public static Condition cv;
+	//public static Condition cv;
 
 	/** Globally accessible reference to the synchronized console. */
 	public static SynchConsole console;

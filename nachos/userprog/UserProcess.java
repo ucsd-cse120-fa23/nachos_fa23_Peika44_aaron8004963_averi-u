@@ -31,7 +31,6 @@ public class UserProcess {
 		childProcesses = new HashMap<Integer, Pair<UserProcess, Integer>>();
 
 
-
 		fileDescriptors = new OpenFile[numFiles];
 		fileDescriptors[0] = UserKernel.console.openForReading();
 		fileDescriptors[1] = UserKernel.console.openForWriting();
@@ -181,11 +180,6 @@ public class UserProcess {
 
 		return amount;
 		
-		// if (vaddr < 0 || length < 0)
-        // return 0;
-
-
-		// //modified end 
 	}
 
 	/**
@@ -249,9 +243,6 @@ public class UserProcess {
 			i += chunkSize;
 		}
 		return i; 
-
-
-		// return amount;
 
 		
 		// end 
