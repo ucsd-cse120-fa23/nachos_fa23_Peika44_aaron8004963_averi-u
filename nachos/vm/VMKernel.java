@@ -107,16 +107,18 @@ public class VMKernel extends UserKernel {
 	public void initialize(String[] args) {
 		super.initialize(args);
 		victimIndex = 0;
-		IPT = new PageInfo[Machine.processor().getNumPhysPages()];
-		for (int i = 0; i < Machine.processor().getNumPhysPages(); i++) {
-			IPT[i] = new PageInfo(null, null, false);
-		}
+		swapCnt = 0;
+		pinCnt = 0;
+
+		//IPT maps vpn to ppn 
+		int numPhysPages = Machine.processor().getNumPhysPages();
+		IPT = new PageInfo[numPhysPages];
+		Arrays.fill(IPT, new PageInfo(null, null, false));
+		
 		swapFile = ThreadedKernel.fileSystem.open("swapFile", true);
 		availableSwapPages = new LinkedList<Integer>();
-		swapCnt = 0;
 		lock = new Lock();
 		CV = new Condition(lock);
-		pinCnt = 0;
 	}
 
 	/**
