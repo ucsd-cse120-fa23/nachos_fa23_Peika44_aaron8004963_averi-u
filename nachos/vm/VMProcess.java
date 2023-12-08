@@ -1,5 +1,7 @@
 package nachos.vm;
 
+import java.util.concurrent.locks.Lock;
+
 import nachos.machine.*;
 import nachos.threads.*;
 import nachos.userprog.*;
@@ -47,6 +49,8 @@ public class VMProcess extends UserProcess {
    pageTable[i] = new TranslationEntry(i, phy, false, false, false, false);
    
   }
+
+  return true;
  }
 
  /**
@@ -67,11 +71,11 @@ public class VMProcess extends UserProcess {
   Processor processor = Machine.processor();
 
   switch (cause) {
-   case processor.PageFault:
+   case Processor.exceptionPageFault:
     handlePageFault(cause);
     break;
    default:
-    UserKernel.handleException(cause);
+    super.handleException(cause);
     break;
   }
  }
@@ -92,40 +96,49 @@ public class VMProcess extends UserProcess {
   TranslationEntry entry = pageTable[vpn];
   
   int ppn = entry.ppn;
+  
+  for (int s = 0; s < coff.getNumSections(); s++) {
+	CoffSection section = coff.getSection(s);
 
-  // find a free page
-  try{
-   int freePage = super.freePages.removeFirst();
+	Lib.debug(dbgProcess, "\tinitializing " + section.getName()
+					+ " section (" + section.getLength() + " pages)");
+                        
   }
-  catch(NoSuchElementException e){
-   // need to be implimented:
-   // swap out a page 
-   Lib.debug(dbgVM, "No free pages, swap out a page");
-  }
+
+//   // find a free page
+//   try{
+//    int freePage = super.freePages.removeFirst();
+//   }
+//   catch(NoSuchElementException e){
+//    // need to be implimented:
+//    // swap out a page 
+//    Lib.debug(dbgVM, "No free pages, swap out a page");
+//   }
   
  
 
-  CoffSection section = coff.getSection(vpn);
+//   CoffSection section = coff.getSection(vpn);
 
-  // load page from coff
-  if(section){
-   section.loadPage(vpn, ppn);
-  }
-  else{
-   // fill page with zero
-   byte[] memory = Machine.Processor().getMemory();
+//   // load page from coff
+//   if(section){
+//    section.loadPage(vpn, ppn);
+//   }
+//   else{
+//    // fill page with zero
+//    byte[] memory = Machine.Processor().getMemory();
 
-   int startPos = Processor.makeAddress(entry.ppn, 0);
-   int pageSize = Machine.Processor().pageSize();
+//    int startPos = Processor.makeAddress(entry.ppn, 0);
+//    int pageSize = Machine.Processor().pageSize();
 
-   Arrays.fill(memory, startPos, startPos + pageSize, (byte) 0);
-  }
+//    Arrays.fill(memory, startPos, startPos + pageSize, (byte) 0);
+//   }
 
-  entry.valid = true;
+//   entry.valid = true;
  }
  private static final int pageSize = Processor.pageSize;
 
  private static final char dbgProcess = 'a';
 
  private static final char dbgVM = 'v';
+
 }
