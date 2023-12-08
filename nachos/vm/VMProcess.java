@@ -42,7 +42,7 @@ public class VMProcess extends UserProcess {
 		// return super.loadSections();
 		// Assuming you have a way to get the size of the executable
 		
-		}
+		
 	
 		return true; // Indicate success
 	}
