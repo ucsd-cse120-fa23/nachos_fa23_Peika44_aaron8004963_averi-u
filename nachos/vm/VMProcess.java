@@ -48,6 +48,14 @@ public class VMProcess extends UserProcess {
 
    pageTable[i] = new TranslationEntry(i, phy, false, false, false, false);
    
+   for (int s = 0; s < coff.getNumSections(); s++) {
+		CoffSection section = coff.getSection(s);
+		for (int j = 0; j < section.getLength(); j++) {
+			int vpn = section.getFirstVPN() + j;
+			pageTable[vpn].readOnly = section.isReadOnly();
+			section.loadPage(j, pageTable[vpn].ppn);
+		}	
+	}
   }
 
   return true;
@@ -104,6 +112,23 @@ public class VMProcess extends UserProcess {
 					+ " section (" + section.getLength() + " pages)");
                         
   }
+
+ 	int coffLength = numPages - stackPages - 1;
+
+	// if (vpn < coffLength) {
+	// 	for (int s = 0; s < coff.getNumSections(); s++) {
+	// 		CoffSection section = coff.getSection(s);
+
+	// 		if (vpn < section.getFirstVPN() + section.getLength()) {
+	// 			pageTable[vpn].readOnly = section.isReadOnly();
+	// 			if (pageTable[vpn].readOnly) Lib.debug(dbgVM, "\tReadOnly");
+	// 			section.loadPage(vpn - section.getFirstVPN(), ppn);
+	// 			break;
+	// 		}
+	// 	}
+	// }
+
+
 
 //   // find a free page
 //   try{
