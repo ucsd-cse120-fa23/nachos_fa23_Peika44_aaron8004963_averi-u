@@ -40,6 +40,14 @@ public class VMProcess extends UserProcess {
 	 */
 	protected boolean loadSections() {
 		return super.loadSections();
+		int executableSize = getExecutableSize();
+		int numVirtualPages = (int) Math.ceil((double) executableSize / pageSize);
+	
+		pageTable = new TranslationEntry[numVirtualPages];
+	
+		for (int i = 0; i < numVirtualPages; i++) {
+			// Create a translation entry for each virtual page without allocating a physical page.
+			pageTable[i] = new TranslationEntry(i, -1, false, false, false, false);
 	}
 
 	/**
