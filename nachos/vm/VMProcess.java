@@ -41,14 +41,7 @@ public class VMProcess extends UserProcess {
 	protected boolean loadSections() {
 		// return super.loadSections();
 		// Assuming you have a way to get the size of the executable
-		int executableSize = getExecutableSize();
-		int numVirtualPages = (int) Math.ceil((double) executableSize / pageSize);
-	
-		pageTable = new TranslationEntry[numVirtualPages];
-	
-		for (int i = 0; i < numVirtualPages; i++) {
-			// Create a translation entry for each virtual page without allocating a physical page.
-			pageTable[i] = new TranslationEntry(i, -1, false, false, false, false);
+		
 		}
 	
 		return true; // Indicate success
