@@ -49,17 +49,14 @@
 // 	// dummy variables to make javac smarter
 // 	private static VMProcess dummy1 = null;
 
-	
-
 // 	private static final char dbgVM = 'v';
 // 	//starter codes end
 
-
-// 	public static int victim;
+// 	public static int victimIndex;
 
 // 	public static System IPT[];
 
-// 	public static LinkedList<Integer> freeSwapPages;
+// 	public static LinkedList<Integer> availableSwapPages;
 
 // 	public static OpenFile swap;
 
@@ -82,90 +79,99 @@
 // 		  this.pin = pin;
 // 		}           
 // 	  }
-        
+
 // }
 
 package nachos.vm;
 
-import java.util.LinkedList;
 import nachos.machine.*;
 import nachos.threads.*;
 import nachos.userprog.*;
 import nachos.vm.*;
+import java.util.*;
 
 /**
  * A kernel that can support multiple demand-paging user processes.
  */
 public class VMKernel extends UserKernel {
-    /**
-     * Allocate a new VM kernel.
-     */
-    public VMKernel() {
-        super();        
-    }
+	/**
+	 * Allocate a new VM kernel.
+	 */
+	public VMKernel() {
+		super();
+	}
 
-    /**
-     * Initialize this kernel.
-     */
-    public void initialize(String[] args) {
-        super.initialize(args);
-        victimIndex = 0;
-        invPageTable = new PageInfo[Machine.processor().getNumPhysPages()];
-        for(int i = 0; i < Machine.processor().getNumPhysPages(); i++){
-            invPageTable[i] = new PageInfo(null, null, false);
-        }
-        swapStorage = ThreadedKernel.fileSystem.open("swapFile", true);
-        availableSwapPages = new LinkedList<Integer>();
-        swapPageCount = 0;
-        vmLock = new Lock();
-        conditionVar = new Condition(vmLock);
-        pinnedPagesCount = 0;
-    }
+	/**
+	 * Initialize this kernel.
+	 */
+	public void initialize(String[] args) {
+		super.initialize(args);
+		victimIndex = 0;
+		IPT = new PageInfo[Machine.processor().getNumPhysPages()];
+		for (int i = 0; i < Machine.processor().getNumPhysPages(); i++) {
+			IPT[i] = new PageInfo(null, null, false);
+		}
+		swapFile = ThreadedKernel.fileSystem.open("swapFile", true);
+		availableSwapPages = new LinkedList<Integer>();
+		swapCnt = 0;
+		lock = new Lock();
+		CV = new Condition(lock);
+		pinCnt = 0;
+	}
 
-    /**
-     * Test this kernel.
-     */
-    public void selfTest() {
-        super.selfTest();
-    }
+	/**
+	 * Test this kernel.
+	 */
+	public void selfTest() {
+		super.selfTest();
+	}
 
-    /**
-     * Start running user programs.
-     */
-    public void run() {
-        super.run();
-    }
+	/**
+	 * Start running user programs.
+	 */
+	public void run() {
+		super.run();
+	}
 
-    /**
-     * Terminate this kernel. Never returns.
-     */
-    public void terminate() {
-        swapStorage.close();
-        ThreadedKernel.fileSystem.remove("swapFile");
-        super.terminate();
-    }
+	/**
+	 * Terminate this kernel. Never returns.
+	 */
+	public void terminate() {
+		swapFile.close();
+		ThreadedKernel.fileSystem.remove("swapFile");
+		super.terminate();
+	}
 
-    // dummy variables to make javac smarter
-    private static VMProcess dummy1 = null;
-    private static final char dbgVM = 'v';
-    public static int victimIndex;
-    public static PageInfo[] invPageTable;
-    public static LinkedList<Integer> availableSwapPages;
-    public static OpenFile swapStorage;
-    public static int swapPageCount;
-    public static Lock vmLock;
-    public static Condition conditionVar;
-    public static int pinnedPagesCount;
+	// dummy variables to make javac smarter
+	private static VMProcess dummy1 = null;
 
-    protected class PageInfo{
-        public VMProcess vmProcess;
-        public TranslationEntry transEntry;
-        public boolean isPinned;
+	private static final char dbgVM = 'v';
 
-        public PageInfo(VMProcess vmProcess, TranslationEntry transEntry, boolean isPinned){
-            this.vmProcess = vmProcess;
-            this.transEntry = transEntry;
-            this.isPinned = isPinned;
-        }           
-    }
+	public static int victimIndex;
+
+	public static PageInfo IPT[];
+
+	public static LinkedList<Integer> availableSwapPages;
+
+	public static OpenFile swapFile;
+
+	public static int swapCnt;
+
+	public static Lock lock;
+
+	public static Condition CV;
+
+	public static int pinCnt;
+
+	protected class PageInfo {
+		public VMProcess process;
+		public TranslationEntry entry;
+		public boolean pin;
+
+		public PageInfo(VMProcess process, TranslationEntry entry, boolean pin) {
+			this.process = process;
+			this.entry = entry;
+			this.pin = pin;
+		}
+	}
 }
