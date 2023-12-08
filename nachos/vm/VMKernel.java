@@ -87,7 +87,6 @@
 
 package nachos.vm;
 
-import java.util.Arrays;
 import java.util.LinkedList;
 import nachos.machine.*;
 import nachos.threads.*;
@@ -108,20 +107,20 @@ public class VMKernel extends UserKernel {
     /**
      * Initialize this kernel.
      */
-public void initialize(String[] args) {
-    super.initialize(args);
-    int numPhysPages = Machine.processor().getNumPhysPages();
-    victimIndex = 0;
-    invPageTable = new PageInfo[numPhysPages];
-    Arrays.fill(invPageTable, new PageInfo(null, null, false));
-    swapStorage = ThreadedKernel.fileSystem.open("swapFile", true);
-    availableSwapPages = new LinkedList<>();
-    swapPageCount = 0;
-    vmLock = new Lock();
-    conditionVar = new Condition(vmLock);
-    pinnedPagesCount = 0;
-}
-
+    public void initialize(String[] args) {
+        super.initialize(args);
+        victimIndex = 0;
+        invPageTable = new PageInfo[Machine.processor().getNumPhysPages()];
+        for(int i = 0; i < Machine.processor().getNumPhysPages(); i++){
+            invPageTable[i] = new PageInfo(null, null, false);
+        }
+        swapStorage = ThreadedKernel.fileSystem.open("swapFile", true);
+        availableSwapPages = new LinkedList<Integer>();
+        swapPageCount = 0;
+        vmLock = new Lock();
+        conditionVar = new Condition(vmLock);
+        pinnedPagesCount = 0;
+    }
 
     /**
      * Test this kernel.
