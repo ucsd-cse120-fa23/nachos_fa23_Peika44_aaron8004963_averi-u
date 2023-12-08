@@ -1,5 +1,7 @@
 package nachos.vm;
 
+import java.util.Arrays;
+import java.util.NoSuchElementException;
 import java.util.concurrent.locks.Lock;
 
 import nachos.machine.*;
@@ -44,12 +46,10 @@ public class VMProcess extends UserProcess {
   // return super.loadSections();
   pageTable = new TranslationEntry[numPages];
   for (int i = 0; i < numPages; i++){
-   int phy = UserKernel.freePages.removeFirst();
+   //int phy = UserKernel.freePages.removeFirst();
 
-   pageTable[i] = new TranslationEntry(i, phy, false, false, false, false);
+   pageTable[i] = new TranslationEntry(i, -1, false, false, false, false);
    
-
-	
   }
 
   return true;
@@ -74,7 +74,7 @@ public class VMProcess extends UserProcess {
 
   switch (cause) {
    case Processor.exceptionPageFault:
-    handlePageFault(cause);
+    handlePageFault(processor.readRegister(Processor.regBadVAddr));
     break;
    default:
     super.handleException(cause);
@@ -87,8 +87,12 @@ public class VMProcess extends UserProcess {
   */
  private void handlePageFault(int bad_vaddr){
   // get faulting vpn
+  VMKernel.lock.acquire();
+
   int vpn = Processor.pageFromAddress(bad_vaddr);
   preparePage(vpn);
+
+  VMKernel.lock.release();
  }
 
  /*
@@ -96,33 +100,88 @@ public class VMProcess extends UserProcess {
   */
  private void preparePage(int vpn){
   TranslationEntry entry = pageTable[vpn];
-  
-  int ppn = entry.ppn;
-  
-  for (int s = 0; s < coff.getNumSections(); s++) {
-	CoffSection section = coff.getSection(s);
+  int coffsize = numPages - stackPages - 1;
 
-	Lib.debug(dbgProcess, "\tinitializing " + section.getName()
-					+ " section (" + section.getLength() + " pages)");
-                        
+  if(vpn < coffsize){
+   loadCoff(vpn, entry);
+  }
+  else{
+   loadStack(vpn, entry);
   }
 
- 	int coffLength = numPages - stackPages - 1;
+  
+}
 
-	// if (vpn < coffLength) {
-	// 	for (int s = 0; s < coff.getNumSections(); s++) {
-	// 		CoffSection section = coff.getSection(s);
+private void loadCoff(int vpn, TranslationEntry entry){
+  int ppn;
+  
+  for (int s = 0; s < coff.getNumSections(); s++) {
 
-	// 		if (vpn < section.getFirstVPN() + section.getLength()) {
-	// 			pageTable[vpn].readOnly = section.isReadOnly();
-	// 			if (pageTable[vpn].readOnly) Lib.debug(dbgVM, "\tReadOnly");
-	// 			section.loadPage(vpn - section.getFirstVPN(), ppn);
-	// 			break;
-	// 		}
-	// 	}
-	// }
+    CoffSection section = coff.getSection(s);
 
+    Lib.debug(dbgProcess, "\tinitializing " + section.getName()
+            + " section (" + section.getLength() + " pages)");
 
+    for (int i = 0; i < section.getLength(); i++) {
+      int v = section.getFirstVPN() + i;
+  
+      if(v == vpn){
+        ppn = 0;     
+      }   
+      else{
+        ppn = getFreePage();   
+      }
+      
+      if(!entry.dirty){
+        section.loadPage(s, ppn);
+        pageTable[vpn] = new TranslationEntry(vpn, ppn, true, section.isReadOnly(), true, false);
+      }
+      else{
+        // need to be implimented:
+        // swap in a page 
+        Lib.debug(dbgVM, "swap in a page");
+      }
+      VMKernel.IPT[ppn].currentProcess = this;
+      VMKernel.IPT[ppn].vpn = vpn;
+    }
+  }
+}
+
+private void loadStack(int vpn, TranslationEntry entry){
+  int ppn;
+  ppn = getFreePage();
+  if(!entry.dirty){
+    byte[] memory = Machine.processor().getMemory();
+
+    //Machine.processor();
+    int startPos = Processor.makeAddress(entry.ppn, 0);
+    int pageSize = Processor.pageSize;
+
+    Arrays.fill(memory, startPos, startPos + pageSize, (byte) 0);
+    pageTable[vpn] = new TranslationEntry(vpn, ppn, true, false, true, false);
+  }
+  else{
+    // need to be implimented:
+    // swap in a page 
+    Lib.debug(dbgVM, "swap in a page");
+  }
+  VMKernel.IPT[ppn].currentProcess = this;
+  VMKernel.IPT[ppn].vpn = vpn;
+}
+
+// get a free page
+private int getFreePage(){
+  int freePage = -1;
+  try{
+   freePage = UserKernel.freePages.removeFirst();
+  }
+  catch(NoSuchElementException e){
+   // need to be implimented:
+   // swap out a page 
+   Lib.debug(dbgVM, "No free pages, swap out a page");
+  }
+  return freePage;
+}
 
 //   // find a free page
 //   try{
@@ -146,14 +205,14 @@ public class VMProcess extends UserProcess {
 //    // fill page with zero
 //    byte[] memory = Machine.Processor().getMemory();
 
-//    int startPos = Processor.makeAddress(entry.ppn, 0);
-//    int pageSize = Machine.Processor().pageSize();
+  //  int startPos = Processor.makeAddress(entry.ppn, 0);
+  //  int pageSize = Machine.Processor().pageSize();
 
 //    Arrays.fill(memory, startPos, startPos + pageSize, (byte) 0);
 //   }
 
 //   entry.valid = true;
- }
+
  private static final int pageSize = Processor.pageSize;
 
  private static final char dbgProcess = 'a';

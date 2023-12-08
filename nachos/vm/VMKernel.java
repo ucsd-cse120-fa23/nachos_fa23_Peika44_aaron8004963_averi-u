@@ -1,7 +1,5 @@
 package nachos.vm;
 
-import java.util.LinkedList;
-
 import nachos.machine.*;
 import nachos.threads.*;
 import nachos.userprog.*;
@@ -11,76 +9,73 @@ import nachos.vm.*;
  * A kernel that can support multiple demand-paging user processes.
  */
 public class VMKernel extends UserKernel {
-	/**
-	 * Allocate a new VM kernel.
-	 */
-	public VMKernel() {
-		super();
-	}
+ /**
+  * Allocate a new VM kernel.
+  */
+ public VMKernel() {
+  super();
+ }
 
-	/**
-	 * Initialize this kernel.
-	 */
-	public void initialize(String[] args) {
-		super.initialize(args);
-	}
+ /**
+  * Initialize this kernel.
+  */
+ public void initialize(String[] args) {
+  super.initialize(args);
+ }
 
-	/**
-	 * Test this kernel.
-	 */
-	public void selfTest() {
-		super.selfTest();
-	}
+ /**
+  * Test this kernel.
+  */
+ public void selfTest() {
+  super.selfTest();
+ }
 
-	/**
-	 * Start running user programs.
-	 */
-	public void run() {
-		super.run();
-	}
+ /**
+  * Start running user programs.
+  */
+ public void run() {
+  super.run();
+ }
 
-	/**
-	 * Terminate this kernel. Never returns.
-	 */
-	public void terminate() {
-		super.terminate();
-	}
+ /**
+  * Terminate this kernel. Never returns.
+  */
+ public void terminate() {
+  super.terminate();
+ }
 
-	// dummy variables to make javac smarter
-	private static VMProcess dummy1 = null;
+ public class IPT{
+  public int vpn;
+  public VMProcess currentProcess;
+  public boolean pin;
 
-	
+  public IPT(){
+   this.vpn = -1;
+   this.currentProcess = null;
+   this.pin = false;
+  }
 
-	private static final char dbgVM = 'v';
-	//starter codes end
+  public IPT(VMProcess process, int vpn, boolean pinned){
+   this.vpn = vpn;
+   this.currentProcess = process;
+   this.pin = pinned;
+  }
+ }
+ 
 
 
-	public static int victim;
+ public static IPT[] IPT = new IPT[Machine.processor().getNumPhysPages()];
 
-	public static System IPT[];
+ private Lock Lock = new Lock();
 
-	public static LinkedList<Integer> freeSwapPages;
+ private Condition condition = new Condition(Lock);
 
-	public static OpenFile swap;
+ private int pinCount = 0;
 
-	public static int sp;
+ private int victim;
 
-	public static Lock mutex;
+ // dummy variables to make javac smarter
+ private static VMProcess dummy1 = null;
 
-	public static Condition CV;
-
-	public static int numPin;
-
-	protected class System{
-		public VMProcess process;
-		public TranslationEntry entry;
-		public boolean pin;
-
-		public System(VMProcess process, TranslationEntry entry, boolean pin){
-		  this.process = process;
-		  this.entry = entry;
-		  this.pin = pin;
-		}           
-	  }
-        
+ private static final char dbgVM = 'v';
 }
