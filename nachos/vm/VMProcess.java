@@ -40,8 +40,7 @@ public class VMProcess extends UserProcess {
 	 */
 	protected boolean loadSections() {
 		return super.loadSections();
-		int executableSize = getExecutableSize();
-		int numVirtualPages = (int) Math.ceil((double) executableSize / pageSize);
+
 	
 		pageTable = new TranslationEntry[numVirtualPages];
 	
