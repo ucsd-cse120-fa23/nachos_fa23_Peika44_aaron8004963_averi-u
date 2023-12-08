@@ -1,4 +1,5 @@
 package nachos.vm;
+
 import java.util.LinkedList;
 
 import nachos.machine.*;
@@ -65,107 +66,73 @@ public class VMProcess extends UserProcess {
   }
 
   public int readVirtualMemory(int vaddr, byte[] data, int offset, int length) {
-    // used_pages = new LinkedList<Integer>();
-    VMKernel.lock.acquire();
+    // assertCondition
     Lib.assertTrue(offset >= 0 && length >= 0
         && offset + length <= data.length);
 
+    // place lock
+    VMKernel.lock.acquire();
+
     byte[] memory = Machine.processor().getMemory();
 
-    if (vaddr < 0) {
+    
+    // for now, just assume that virtual addresses equal physical addresses
+    if (vaddr < 0 || vaddr >= memory.length) {
       VMKernel.lock.release();
       return 0;
     }
-    int left = length;
-    int amount = 0;
-    int cur_offset = offset;
+
+    int amount = Math.min(length, memory.length - vaddr);
+    Lib.debug(dbgProcess, amount + " bytes to read from " + vaddr);
+    
+    // int cur_offset = offset;
     int total_read = 0;
-    int paddr = -1;
-    int paddr_offset = Processor.offsetFromAddress(vaddr);
+    int phyAdd = -1;
+    int vpnOff = Processor.offsetFromAddress(vaddr);
     int vpn = Processor.pageFromAddress(vaddr);
 
-    if (vpn >= pageTable.length || vpn < 0) {
-      VMKernel.lock.release();
-      return total_read;
-    }
-    if (pageTable[vpn].valid) {
-      VMKernel.IPT[pageTable[vpn].ppn].pin = true;
-      VMKernel.pinCnt++;
-      pageTable[vpn].used = true;
-      paddr = pageTable[vpn].ppn * pageSize + paddr_offset; // if paddr but not good used bit set?????
-    } else {
-      handlePageFault(vaddr); // an error may occur??????
-      if (pageTable[vpn].valid) {
-        VMKernel.IPT[pageTable[vpn].ppn].pin = true;
-        VMKernel.pinCnt++;
-        pageTable[vpn].used = true;
-        paddr = pageTable[vpn].ppn * pageSize + paddr_offset;
-      } else {
-        VMKernel.lock.release();
-        return total_read;
-      }
-    }
-    // for now, just assume that virtual addresses equal physical addresses
-    if (paddr < 0 || paddr >= memory.length) {
-      VMKernel.IPT[pageTable[vpn].ppn].pin = false;
-      VMKernel.pinCnt--;
-      VMKernel.CV.wake();
-      VMKernel.lock.release();
-      return 0;
-    }
+    amount = Math.min(length, (pageSize - vpnOff));
+    Lib.debug(dbgProcess, amount + " bytes to read from vpn " + vpn + " offset " + vpnOff);
 
-    amount = Math.min(left, (pageSize - paddr_offset));
-    System.arraycopy(memory, paddr, data, offset, amount);
-    VMKernel.IPT[pageTable[vpn].ppn].pin = false;
-    VMKernel.pinCnt--;
-    VMKernel.CV.wake();
-    total_read += amount;
-    cur_offset += amount;
-    left -= amount;
-    while (left > 0) {
-      vpn++;
+    for(int i = 0; i < amount; i++){
+
       if (vpn >= pageTable.length || vpn < 0) {
         VMKernel.lock.release();
         return total_read;
       }
-      if (pageTable[vpn].valid) {
-        VMKernel.IPT[pageTable[vpn].ppn].pin = true;
-        VMKernel.pinCnt++;
-        // System.out.println("b");
-        pageTable[vpn].used = true;
-        paddr = pageTable[vpn].ppn * pageSize;
-      } else {
-        vaddr = Processor.makeAddress(vpn, 0);
-        handlePageFault(vaddr); // an error may occurrrrrr?????
-        if (pageTable[vpn].valid) { // valid means correct?????
-          VMKernel.IPT[pageTable[vpn].ppn].pin = true;
-          VMKernel.pinCnt++;
-          // System.out.println("a");
-          pageTable[vpn].used = true;
-          paddr = pageTable[vpn].ppn * pageSize;
-        } else {
-          VMKernel.lock.release();
-          return total_read; // else return immedia????????
-        }
+  
+      if(!pageTable[vpn].valid){
+        handlePageFault(vaddr);
       }
+  
+      pageTable[vpn].used = true;
+      phyAdd = pageTable[vpn].ppn * pageSize + vpnOff;
+      
+      // increment the pin
+      VMKernel.IPT[pageTable[vpn].ppn].pin = true;
+      VMKernel.pinCnt++;
 
-      if (paddr < 0 || paddr >= memory.length) {
-        VMKernel.IPT[pageTable[vpn].ppn].pin = false;
-        VMKernel.pinCnt--;
-        VMKernel.CV.wake();
-        VMKernel.lock.release();
-        return total_read;
-      }
-      amount = Math.min(left, pageSize);
-      System.arraycopy(memory, paddr, data, cur_offset, amount);
+      //read from memory
+      System.arraycopy(memory, phyAdd, data, offset, amount);
+  
+      // decrement the pin
       VMKernel.IPT[pageTable[vpn].ppn].pin = false;
       VMKernel.pinCnt--;
-      // System.out.println("jkafahkjfhadjkfhdashgasfbvsdfbasdfasd");
+  
+      // try to invoke CV since not full pin
       VMKernel.CV.wake();
-      total_read += amount;
-      cur_offset += amount;
-      left -= amount;
-    }
+
+   vpn = Processor.pageFromAddress(vaddr + i);
+   vpnOff = Processor.offsetFromAddress(vaddr + i);
+   
+      int ppn = pageTable[vpn].ppn;
+   
+   phyAdd = pageSize*ppn + vpnOff;
+
+   //System.arraycopy(memory, phyAdd, data, offset, amount);
+   data[offset++] = Machine.processor().getMemory()[phyAdd];
+   pageTable[vpn].used = true;
+  }
 
     VMKernel.lock.release();
     return total_read;
@@ -185,14 +152,14 @@ public class VMProcess extends UserProcess {
     int left = length;
     int amount = 0;
     int cur_offset = offset;
-    int total_write = 0;
-    int paddr = -1;
-    int paddr_offset = Processor.offsetFromAddress(vaddr);
+    int writeCnt = 0;
+    int phyAdd = -1;
+    int phyAdd_offset = Processor.offsetFromAddress(vaddr);
     int vpn = Processor.pageFromAddress(vaddr);
 
     if (vpn >= pageTable.length || vpn < 0) {
       VMKernel.lock.release();
-      return total_write;
+      return writeCnt;
     }
 
     if (pageTable[vpn].valid) {
@@ -200,7 +167,7 @@ public class VMProcess extends UserProcess {
       VMKernel.pinCnt++;
       // System.out.println("c");
       if (pageTable[vpn].readOnly == false) {
-        paddr = pageTable[vpn].ppn * pageSize + paddr_offset;
+        phyAdd = pageTable[vpn].ppn * pageSize + phyAdd_offset;
         pageTable[vpn].used = true;
       }
     } else {
@@ -210,20 +177,20 @@ public class VMProcess extends UserProcess {
           VMKernel.IPT[pageTable[vpn].ppn].pin = true;
           VMKernel.pinCnt++;
           // System.out.println("d");
-          paddr = pageTable[vpn].ppn * pageSize + paddr_offset;
+          phyAdd = pageTable[vpn].ppn * pageSize + phyAdd_offset;
           pageTable[vpn].used = true;
         } else {
           VMKernel.lock.release();
-          return total_write;
+          return writeCnt;
         }
       } else {
         VMKernel.lock.release();
-        return total_write;
+        return writeCnt;
       }
     }
 
     // for now, just assume that virtual addresses equal physical addresses
-    if (paddr < 0 || paddr >= memory.length) {
+    if (phyAdd < 0 || phyAdd >= memory.length) {
       VMKernel.IPT[pageTable[vpn].ppn].pin = false;
       VMKernel.pinCnt--;
       VMKernel.CV.wake();
@@ -231,32 +198,32 @@ public class VMProcess extends UserProcess {
       return 0;
     }
 
-    amount = Math.min(left, (pageSize - paddr_offset));
-    System.arraycopy(data, offset, memory, paddr, amount);
+    amount = Math.min(left, (pageSize - phyAdd_offset));
+    System.arraycopy(data, offset, memory, phyAdd, amount);
     if (amount > 0) {
       pageTable[vpn].dirty = true;
     }
     VMKernel.IPT[pageTable[vpn].ppn].pin = false;
     VMKernel.pinCnt--;
     VMKernel.CV.wake();
-    total_write += amount;
+    writeCnt += amount;
     cur_offset += amount;
     left -= amount;
     while (left > 0) {
       vpn++;
       if (vpn >= pageTable.length || vpn < 0) {
         VMKernel.lock.release();
-        return total_write;
+        return writeCnt;
       }
       if (pageTable[vpn].valid) {
         if (pageTable[vpn].readOnly == false) {
           VMKernel.IPT[pageTable[vpn].ppn].pin = true;
           VMKernel.pinCnt++;
-          paddr = pageTable[vpn].ppn * pageSize;
+          phyAdd = pageTable[vpn].ppn * pageSize;
           pageTable[vpn].used = true;
         } else {
           VMKernel.lock.release();
-          return total_write;
+          return writeCnt;
         }
       } else {
         vaddr = Processor.makeAddress(vpn, 0);
@@ -265,40 +232,40 @@ public class VMProcess extends UserProcess {
           if (pageTable[vpn].readOnly == false) {
             VMKernel.IPT[pageTable[vpn].ppn].pin = true;
             VMKernel.pinCnt++;
-            paddr = pageTable[vpn].ppn * pageSize;
+            phyAdd = pageTable[vpn].ppn * pageSize;
             pageTable[vpn].used = true;
           } else {
             VMKernel.lock.release();
-            return total_write;
+            return writeCnt;
           }
         } else {
           VMKernel.lock.release();
-          return total_write;
+          return writeCnt;
         }
       }
 
-      if (paddr < 0 || paddr >= memory.length) {
+      if (phyAdd < 0 || phyAdd >= memory.length) {
         VMKernel.IPT[pageTable[vpn].ppn].pin = false;
         VMKernel.pinCnt--;
         VMKernel.CV.wake();
         VMKernel.lock.release();
-        return total_write;
+        return writeCnt;
       }
       amount = Math.min(left, pageSize);
-      System.arraycopy(data, cur_offset, memory, paddr, amount);
+      System.arraycopy(data, cur_offset, memory, phyAdd, amount);
       if (amount > 0) {
         pageTable[vpn].dirty = true;
       }
       VMKernel.IPT[pageTable[vpn].ppn].pin = false;
       VMKernel.pinCnt--;
       VMKernel.CV.wake();
-      total_write += amount;
+      writeCnt += amount;
       cur_offset += amount;
       left -= amount;
     }
 
     VMKernel.lock.release();
-    return total_write;
+    return writeCnt;
 
   }
 
@@ -476,6 +443,7 @@ public class VMProcess extends UserProcess {
         break;
     }
   }
+
   public LinkedList<Integer> used_pages;
 
   private static final int pageSize = Processor.pageSize;
@@ -483,5 +451,5 @@ public class VMProcess extends UserProcess {
   private static final char dbgProcess = 'a';
 
   private static final char dbgVM = 'v';
-  
+
 }
