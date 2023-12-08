@@ -87,94 +87,86 @@
 
 package nachos.vm;
 
+import java.util.Arrays;
+import java.util.LinkedList;
 import nachos.machine.*;
 import nachos.threads.*;
 import nachos.userprog.*;
 import nachos.vm.*;
-import java.util.*;
 
 /**
  * A kernel that can support multiple demand-paging user processes.
  */
 public class VMKernel extends UserKernel {
-	/**
-	 * Allocate a new VM kernel.
-	 */
-	public VMKernel() {
-		super();        
-	}
+    /**
+     * Allocate a new VM kernel.
+     */
+    public VMKernel() {
+        super();        
+    }
 
-	/**
-	 * Initialize this kernel.
-	 */
-	public void initialize(String[] args) {
-		super.initialize(args);
-                victim = 0;
-                IPT = new Information[Machine.processor().getNumPhysPages()];
-                for(int i = 0; i < Machine.processor().getNumPhysPages(); i++){
-                  IPT[i] = new Information(null, null, false);
-                }
-                swapFile = ThreadedKernel.fileSystem.open("swapFile", true);
-                freeSwapPages = new LinkedList<Integer>();
-                num_sp = 0;
-                vmmutex = new Lock();
-                CV = new Condition(vmmutex);
-                pinCount = 0;
-	}
+    /**
+     * Initialize this kernel.
+     */
+public void initialize(String[] args) {
+    super.initialize(args);
+    int numPhysPages = Machine.processor().getNumPhysPages();
+    victimIndex = 0;
+    invPageTable = new PageInfo[numPhysPages];
+    Arrays.fill(invPageTable, new PageInfo(null, null, false));
+    swapStorage = ThreadedKernel.fileSystem.open("swapFile", true);
+    availableSwapPages = new LinkedList<>();
+    swapPageCount = 0;
+    vmLock = new Lock();
+    conditionVar = new Condition(vmLock);
+    pinnedPagesCount = 0;
+}
 
-	/**
-	 * Test this kernel.
-	 */
-	public void selfTest() {
-		super.selfTest();
-	}
 
-	/**
-	 * Start running user programs.
-	 */
-	public void run() {
-		super.run();
-	}
+    /**
+     * Test this kernel.
+     */
+    public void selfTest() {
+        super.selfTest();
+    }
 
-	/**
-	 * Terminate this kernel. Never returns.
-	 */
-	public void terminate() {
-                swapFile.close();
-                ThreadedKernel.fileSystem.remove("swapFile");
-		super.terminate();
-	}
+    /**
+     * Start running user programs.
+     */
+    public void run() {
+        super.run();
+    }
 
-	// dummy variables to make javac smarter
-	private static VMProcess dummy1 = null;
+    /**
+     * Terminate this kernel. Never returns.
+     */
+    public void terminate() {
+        swapStorage.close();
+        ThreadedKernel.fileSystem.remove("swapFile");
+        super.terminate();
+    }
 
-	private static final char dbgVM = 'v';
+    // dummy variables to make javac smarter
+    private static VMProcess dummy1 = null;
+    private static final char dbgVM = 'v';
+    public static int victimIndex;
+    public static PageInfo[] invPageTable;
+    public static LinkedList<Integer> availableSwapPages;
+    public static OpenFile swapStorage;
+    public static int swapPageCount;
+    public static Lock vmLock;
+    public static Condition conditionVar;
+    public static int pinnedPagesCount;
 
-        public static int victim;
+    protected class PageInfo{
+        public VMProcess vmProcess;
+        public TranslationEntry transEntry;
+        public boolean isPinned;
 
-        public static Information IPT[];
-
-        public static LinkedList<Integer> freeSwapPages;
-
-        public static OpenFile swapFile;
-
-        public static int num_sp;
-     
-        public static Lock vmmutex;
-
-        public static Condition CV;
-
-        public static int pinCount;
-
-        protected class Information{
-          public VMProcess process;
-          public TranslationEntry entry;
-          public boolean pin;
-
-          public Information(VMProcess process, TranslationEntry entry, boolean pin){
-            this.process = process;
-            this.entry = entry;
-            this.pin = pin;
-          }           
-        }
+        public PageInfo(VMProcess vmProcess, TranslationEntry transEntry, boolean isPinned){
+            this.vmProcess = vmProcess;
+            this.transEntry = transEntry;
+            this.isPinned = isPinned;
+        }           
+    }
 }
