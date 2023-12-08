@@ -44,6 +44,36 @@ public class VMKernel extends UserKernel {
 		super.terminate();
 	}
 
+	public class IPT{
+		public int vpn;
+		public VMProcess currentProcess;
+		public boolean pin;
+
+		public IPT(){
+			this.vpn = -1;
+			this.currentProcess = null;
+			this.pin = false;
+		}
+
+		public IPT(VMProcess process, int vpn, boolean pinned){
+			this.vpn = vpn;
+			this.currentProcess = process;
+			this.pin = pinned;
+		}
+	}
+	
+
+
+	public static IPT[] IPT = new IPT[Machine.processor().getNumPhysPages()];
+
+	private Lock Lock = new Lock();
+
+	private Condition condition = new Condition(Lock);
+
+	private int pinCount = 0;
+
+	private int victim;
+
 	// dummy variables to make javac smarter
 	private static VMProcess dummy1 = null;
 
