@@ -342,6 +342,14 @@ private void unpinPage(int vpn) {
     }
   }
 
+  // public void printIPT() {
+  //   for (int i = 0; i < Machine.processor().getNumPhysPages(); i++) {
+  //     Lib.debug(dbgProcess, "ppn: " + i + " pid: " + VMKernel.IPT[i].process + " vpn: "
+  //         + VMKernel.IPT[i].entry.vpn + " valid: " + VMKernel.IPT[i].entry.valid + " dirty: "
+  //         + VMKernel.IPT[i].entry.dirty + " used: " + VMKernel.IPT[i].entry.used);
+  //   }
+  // }
+
   public LinkedList<Integer> used_pages;
 
   private static final int pageSize = Processor.pageSize;
