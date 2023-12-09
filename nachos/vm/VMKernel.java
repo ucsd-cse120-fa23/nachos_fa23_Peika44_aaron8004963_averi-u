@@ -139,31 +139,10 @@ public class VMKernel extends UserKernel {
 	 * Terminate this kernel. Never returns.
 	 */
 	public void terminate() {
-		swapFile.close();
+		// swapFile.close();
 		ThreadedKernel.fileSystem.remove("swapFile");
 		super.terminate();
 	}
-
-	// dummy variables to make javac smarter
-	private static VMProcess dummy1 = null;
-
-	private static final char dbgVM = 'v';
-
-	public static int victimIndex;
-
-	public static PageInfo IPT[];
-
-	public static LinkedList<Integer> availableSwapPages;
-
-	public static OpenFile swapFile;
-
-	public static int swapCnt;
-
-	public static Lock lock;
-
-	public static Condition CV;
-
-	public static int pinCnt;
 
 	protected class PageInfo {
 		public VMProcess process;
@@ -176,4 +155,24 @@ public class VMKernel extends UserKernel {
 			this.pin = pin;
 		}
 	}
+
+	// dummy variables to make javac smarter
+	private static VMProcess dummy1 = null;
+
+	private static final char dbgVM = 'v';
+
+	public static PageInfo IPT[];
+	public static int victimIndex;
+	public static int pinCnt;
+	
+	public static OpenFile swapFile;
+	public static LinkedList<Integer> availableSwapPages;
+	public static int swapCnt;
+
+	public static Lock lock;
+	public static Condition CV;
+
+	
+
+	
 }
