@@ -149,7 +149,7 @@ public class VMProcess extends UserProcess {
       VMKernel.lock.release();
       return 0;
     }
-    int left = length;
+    int start = length;
     int amount = 0;
     int cur_offset = offset;
     int writeCnt = 0;
@@ -165,7 +165,6 @@ public class VMProcess extends UserProcess {
     if (pageTable[vpn].valid) {
       VMKernel.IPT[pageTable[vpn].ppn].pin = true;
       VMKernel.pinCnt++;
-      // System.out.println("c");
       if (pageTable[vpn].readOnly == false) {
         phyAdd = pageTable[vpn].ppn * pageSize + phyAdd_offset;
         pageTable[vpn].used = true;
@@ -176,7 +175,6 @@ public class VMProcess extends UserProcess {
         if (pageTable[vpn].readOnly == false) {
           VMKernel.IPT[pageTable[vpn].ppn].pin = true;
           VMKernel.pinCnt++;
-          // System.out.println("d");
           phyAdd = pageTable[vpn].ppn * pageSize + phyAdd_offset;
           pageTable[vpn].used = true;
         } else {
@@ -198,7 +196,7 @@ public class VMProcess extends UserProcess {
       return 0;
     }
 
-    amount = Math.min(left, (pageSize - phyAdd_offset));
+    amount = Math.min(start, (pageSize - phyAdd_offset));
     System.arraycopy(data, offset, memory, phyAdd, amount);
     if (amount > 0) {
       pageTable[vpn].dirty = true;
@@ -208,8 +206,8 @@ public class VMProcess extends UserProcess {
     VMKernel.CV.wake();
     writeCnt += amount;
     cur_offset += amount;
-    left -= amount;
-    while (left > 0) {
+    start -= amount;
+    while (start > 0) {
       vpn++;
       if (vpn >= pageTable.length || vpn < 0) {
         VMKernel.lock.release();
@@ -251,7 +249,7 @@ public class VMProcess extends UserProcess {
         VMKernel.lock.release();
         return writeCnt;
       }
-      amount = Math.min(left, pageSize);
+      amount = Math.min(start, pageSize);
       System.arraycopy(data, cur_offset, memory, phyAdd, amount);
       if (amount > 0) {
         pageTable[vpn].dirty = true;
@@ -261,7 +259,7 @@ public class VMProcess extends UserProcess {
       VMKernel.CV.wake();
       writeCnt += amount;
       cur_offset += amount;
-      left -= amount;
+      start -= amount;
     }
 
     VMKernel.lock.release();
