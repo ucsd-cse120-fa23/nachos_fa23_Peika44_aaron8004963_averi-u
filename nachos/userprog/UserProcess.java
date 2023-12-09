@@ -664,8 +664,8 @@ public class UserProcess {
 	 */
 	private int handleExit(int status) {
 		Machine.autoGrader().finishingCurrentProcess(status);
-		Lib.debug(dbgProcess, "UserProcess.handleExit (" + status + ")");
-
+		// Lib.debug(dbgProcess, "UserProcess.handleExit (" + status + ")");
+		System.out.println("Status!!!!!!!!!!!!!!!"+status);
 		for(int i = 0; i < fileDescriptors.length; i++){
 			handleClose(i);
 		}
