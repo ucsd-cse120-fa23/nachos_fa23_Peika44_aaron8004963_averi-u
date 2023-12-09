@@ -540,6 +540,7 @@ public class VMProcess extends UserProcess {
     }
   }
 
+
   public LinkedList<Integer> used_pages;
 
   private static final int pageSize = Processor.pageSize;
