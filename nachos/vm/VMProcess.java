@@ -45,31 +45,28 @@ public class VMProcess extends UserProcess {
   protected boolean loadSections() {
     pageTable = new TranslationEntry[numPages];
     for (int i = 0; i < numPages; i++) {
-      pageTable[i] = new TranslationEntry(i, i, false, false, false, false);
+      pageTable[i] = new TranslationEntry(i, -1, false, false, false, false);
     }
-    // load sections
     return true;
-    // return super.loadSections();
   }
 
   /**
    * Release any resources allocated by <tt>loadSections()</tt>.
    */
   protected void unloadSections() {
-    // UserKernel.lock.acquire();
+    UserKernel.lock.acquire();
+    
     while (!used_pages.isEmpty()) {
-      UserKernel.freePages.add(used_pages.removeLast());
+      UserKernel.freePages.add(used_pages.removeFirst());
     }
-    System.out.println("  used page.size: " + used_pages.size());
 
-    System.out.println("  free page.size: " + UserKernel.freePages.size());
-    // UserKernel.lock.release();
+    UserKernel.lock.release();
   }
 
   public int readVirtualMemory(int vaddr, byte[] data, int offset, int length) {
     VMKernel.lock.acquire();
 
-    // byte[] memory = Machine.processor().getMemory();
+    byte[] memory = Machine.processor().getMemory();
 
     // Validate parameters
     if (vaddr < 0 ) {
@@ -82,74 +79,43 @@ public class VMProcess extends UserProcess {
     while (length > 0) {
         int vpn = Processor.pageFromAddress(vaddr);
         int phyOff = Processor.offsetFromAddress(vaddr);
-
         if(vpn >= pageTable.length || vpn < 0){
           break;
         }
-
         // Handle the page fault
         if (!pageTable[vpn].valid) {
             handlePageFault(vaddr);
         }     
-             // if (!pageTable[vpn].valid) {
-            //     break;
-            // }
-
-        // int ppn = pageTable[vpn].ppn;
-        // VMKernel.IPT[pageTable[vpn].ppn].pin = true;
-        // VMKernel.pinCnt++;
-        // pageTable[vpn].used = true;
         pinPage(vpn);
-
-
         int phyAdd = pageTable[vpn].ppn * Processor.pageSize + phyOff;
         int amount = Math.min(length, Processor.pageSize - phyOff);
-        if (!(phyAdd >= 0 && phyAdd + amount <= Machine.processor().getMemory().length)) {
+        if (!(phyAdd >= 0 && phyAdd + amount <= memory.length)) {
           //  VMKernel.IPT[pageTable[vpn].ppn].pin = false;
           //   VMKernel.pinCnt --;
           //   VMKernel.CV.wake();
             unpinPage(vpn);
             break;
         }
-
-        System.arraycopy(Machine.processor().getMemory(), phyAdd, data, offset, amount);
-
+        System.arraycopy(memory, phyAdd, data, offset, amount);
         // Update variables for next iteration
         vaddr += amount;
         offset += amount;
         length -= amount;
         read_result += amount;
-
         // VMKernel.IPT[pageTable[vpn].ppn].pin = false;
         // VMKernel.pinCnt --;
         // VMKernel.CV.wake();
         unpinPage(vpn);
-        //pageTable[vpn].used = true;
+        pageTable[vpn].used = true;
     }
-
     VMKernel.lock.release();
     return read_result;
 }
 
-private void pinPage(int vpn) {
-  VMKernel.IPT[pageTable[vpn].ppn].pin = true;
-  VMKernel.pinCnt++;
-  pageTable[vpn].used = true;
-}
-
-private void unpinPage(int vpn) {
-  VMKernel.IPT[pageTable[vpn].ppn].pin = false;
-  VMKernel.pinCnt--;
-  VMKernel.CV.wake();
-}
-
-
   public int writeVirtualMemory(int vaddr, byte[] data, int offset, int length) {
-    // checking
     VMKernel.lock.acquire();
-    Lib.assertTrue(offset >= 0 && length >= 0 && offset + length <= data.length);
     byte[] memory = Machine.processor().getMemory();
-    if (vaddr < 0 || vaddr >= memory.length) {
+    if (!(vaddr < memory.length && vaddr >= 0 )) {
       VMKernel.lock.release();
       return 0;
     }
@@ -158,16 +124,11 @@ private void unpinPage(int vpn) {
     for (int i = 0; i < length; i++) {
       int vpn = Processor.pageFromAddress(vaddr + i);
       TranslationEntry entry = pageTable[vpn];
-
       if (vpn < 0 || vpn >= pageTable.length || !entry.valid)
         break;
-
       int ppn = entry.ppn;
       if (!entry.readOnly) {
-
         int phyAdd = pageSize * ppn + Processor.offsetFromAddress(vaddr + i);
-        // Processor.offsetFromAddress represents how far into memory page the addris
-
         memory[phyAdd] = data[offset + i];
         entry.dirty = true;
         writeCnt++;
@@ -195,6 +156,19 @@ private void unpinPage(int vpn) {
 
     UserKernel.lock.release();
   }
+
+  private void pinPage(int vpn) {
+  VMKernel.IPT[pageTable[vpn].ppn].pin = true;
+  VMKernel.pinCnt++;
+  // pageTable[vpn].used = true;
+}
+
+private void unpinPage(int vpn) {
+  VMKernel.IPT[pageTable[vpn].ppn].pin = false;
+  VMKernel.pinCnt--;
+  VMKernel.CV.wake();
+}
+
 
   // helper method to check pages within a section/stack;
   // if bad, swapOut&swapIn
@@ -244,7 +218,7 @@ private void unpinPage(int vpn) {
       // Remove the evicted page from the process's used pages and update IPT
       VMKernel.IPT[toEvict].entry.valid = false;
 
-      int evictedPPN = new Integer(VMKernel.IPT[toEvict].entry.ppn);
+      int evictedPPN = VMKernel.IPT[toEvict].entry.ppn;
       VMKernel.IPT[toEvict].process.used_pages.remove(evictedPPN);
 
       // New available ppn is the page being swapped out
