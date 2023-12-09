@@ -1,4 +1,6 @@
 package nachos.vm;
+
+import java.util.Arrays;
 import java.util.LinkedList;
 
 import nachos.machine.*;
@@ -303,157 +305,172 @@ public class VMProcess extends UserProcess {
   }
 
   protected void handlePageFault(int badVaddr) {
-    VMKernel.lock.acquire();
-    int badVpn = Processor.pageFromAddress(badVaddr);
-    int coffVpn = 0;
+    UserKernel.lock.acquire();
+
+    boolean badCoff = true;
+    int firstVPN = -1;
+    // Iterate through each section of the COFF file
     for (int s = 0; s < coff.getNumSections(); s++) {
-      CoffSection section = coff.getSection(s);
-
-      Lib.debug(dbgProcess, "\tinitializing " + section.getName()
-          + " section (" + section.getLength() + " pages)");
-
-      for (int i = 0; i < section.getLength(); i++) {
-        int vpn = section.getFirstVPN() + i;
-        coffVpn = vpn;
-        if (vpn == badVpn) {
-          int ppn = 0;
-          // for now, just assume virtual addresses=physical addresses
-          if (!UserKernel.freePages.isEmpty()) {
-            ppn = UserKernel.freePages.removeLast();
-          } else {
-            while (true) {
-              // add lock tomorrow
-              if (VMKernel.IPT[VMKernel.victimIndex].pin == true) {
-                // System.out.println(VMKernel.pinCnt);
-                if (VMKernel.pinCnt == Machine.processor().getNumPhysPages()) {
-                  VMKernel.CV.sleep();
-                } // if or while?????
-                VMKernel.victimIndex = (VMKernel.victimIndex + 1) % Machine.processor().getNumPhysPages();
-                continue;
-              }
-              if (VMKernel.IPT[VMKernel.victimIndex].entry.used == false) {
-                break;
-              }
-              VMKernel.IPT[VMKernel.victimIndex].entry.used = false;
-              VMKernel.victimIndex = (VMKernel.victimIndex + 1) % Machine.processor().getNumPhysPages();
-            }
-            int toEvict = VMKernel.victimIndex;
-            VMKernel.victimIndex = (VMKernel.victimIndex + 1) % Machine.processor().getNumPhysPages();
-            if (VMKernel.IPT[toEvict].entry.dirty) {
-              int spn = 0;
-              if (!VMKernel.availableSwapPages.isEmpty()) {
-                spn = VMKernel.availableSwapPages.removeLast();
-              } else {
-                spn = VMKernel.swapCnt;
-                VMKernel.swapCnt++;
-              }
-              VMKernel.swapFile.write(spn * Processor.pageSize, Machine.processor().getMemory(),
-                  Processor.makeAddress(VMKernel.IPT[toEvict].entry.ppn, 0), Processor.pageSize);
-
-              VMKernel.IPT[toEvict].entry.vpn = spn;
-              // swap out
-              // spn
-            }
-            VMKernel.IPT[toEvict].process.used_pages.remove(new Integer(VMKernel.IPT[toEvict].entry.ppn)); // ???????????????
-                                                                                                           // remove
-                                                                                                           // pages
-                                                                                                           // actuall
-                                                                                                           // physicalllll
-            VMKernel.IPT[toEvict].entry.valid = false;
-            ppn = VMKernel.IPT[toEvict].entry.ppn;
-          }
-          used_pages.add(ppn);
-          if (!pageTable[vpn].dirty) {
-            section.loadPage(i, ppn); // this load to PMem?
-            if (section.isReadOnly()) {
-              pageTable[vpn] = new TranslationEntry(vpn, ppn, true, true, true, false);
-            } else {
-              pageTable[vpn] = new TranslationEntry(vpn, ppn, true, false, true, false);
-            }
-          } else {
-            // swap in
-            VMKernel.swapFile.read(pageTable[vpn].vpn * Processor.pageSize, Machine.processor().getMemory(),
-                Processor.makeAddress(ppn, 0), Processor.pageSize);
-            VMKernel.availableSwapPages.add(pageTable[vpn].vpn);
-            pageTable[vpn] = new TranslationEntry(vpn, ppn, true, false, true, true);
-          }
-          VMKernel.IPT[ppn].process = this;
-          VMKernel.IPT[ppn].entry = pageTable[vpn];
-        }
-      }
+      // Iterate through each page of the section
+      firstVPN = coff.getSection(s).getFirstVPN();
+      iteratePages(badCoff, firstVPN, s, badVaddr);
     }
 
-    for (int i = coffVpn + 1; i < numPages; i++) {
-      int vpn = i;
+    badCoff = false;
+    iteratePages(badCoff, firstVPN, coff.getNumSections() - 1, badVaddr);
 
-      if (vpn == badVpn) {
-        int ppn = 0;
-        if (!UserKernel.freePages.isEmpty()) {
-          ppn = UserKernel.freePages.removeLast();
-        } else {
-          while (true) {
-            // add lock tomorrow
-            if (VMKernel.IPT[VMKernel.victimIndex].pin == true) {
-              // System.out.println(VMKernel.pinCnt);
-              if (VMKernel.pinCnt == Machine.processor().getNumPhysPages()) {
-                VMKernel.CV.sleep();
-              } // if or while????? VMKernel.lock.acquire();
-              VMKernel.victimIndex = (VMKernel.victimIndex + 1) % Machine.processor().getNumPhysPages();
-              continue;
-            }
-            if (VMKernel.IPT[VMKernel.victimIndex].entry.used == false) {
-              break;
-            }
-            VMKernel.IPT[VMKernel.victimIndex].entry.used = false;
-            VMKernel.victimIndex = (VMKernel.victimIndex + 1) % Machine.processor().getNumPhysPages();
-          }
+    UserKernel.lock.release();
+  }
 
-          int toEvict = VMKernel.victimIndex;
+  // helper method to check pages within a section/stack;
+  // if bad, swapOut&swapIn
+  private void iteratePages(boolean badCoff, int firstVPN, int currSectionIndex, int badVaddr) {
+    int vpn;
+
+    int start = 0;
+    int end = coff.getSection(currSectionIndex).getLength();
+    if (!badCoff) {
+      start = firstVPN + coff.getSection(currSectionIndex).getLength() + 1;
+      end = numPages;
+    }
+
+    // try to find bad pages by iterating
+    for (int i = start; i < end; i++) {
+      if (badCoff) {
+        vpn = firstVPN + i;
+      } else {
+        vpn = i;
+      }
+      //found bad page
+      if (vpn == Processor.pageFromAddress(badVaddr)) { 
+        // swap out
+        int availablePPN = swapOut(); 
+        // swap in
+        SwapIn(badCoff, coff.getSection(currSectionIndex), i, vpn, availablePPN);// swap in
+      }
+    }
+  }
+
+  // swap out(if no free pages)
+  private int swapOut() {
+    int availablePPN;
+
+    // if there are free space
+    if (!UserKernel.freePages.isEmpty()) {
+      availablePPN = UserKernel.freePages.removeLast();
+    }
+    // if not
+    else {
+      // Clock algorithm to find evict
+      int toEvict = clockAlgorithm();
+
+      // If the victim is dirty, write it to the swap file
+      handleDirtyPage(toEvict);
+
+      // Remove the evicted page from the process's used pages and update IPT
+      VMKernel.IPT[toEvict].entry.valid = false;
+
+      int evictedPPN = new Integer(VMKernel.IPT[toEvict].entry.ppn);
+      VMKernel.IPT[toEvict].process.used_pages.remove(evictedPPN);
+
+      // New available ppn is the page being swapped out
+      availablePPN = VMKernel.IPT[toEvict].entry.ppn;
+    }
+
+    return availablePPN;
+  }
+
+  private void SwapIn(boolean badCoff, CoffSection section, int sectionPageIndex, int vpn, int ppn) {
+    // swap from swapFile
+    if (pageTable[vpn].dirty) {
+      loadFromSwapFile(vpn, ppn);
+    }
+    // if this page never loaded
+    else {
+      if (badCoff) {
+        loadFromCoff(section, sectionPageIndex, vpn, ppn);
+      } else {
+        loadFromStack(vpn, ppn);
+      }
+    }
+    used_pages.add(ppn);
+    VMKernel.IPT[ppn].process = this;
+    VMKernel.IPT[ppn].entry = pageTable[vpn];
+  }
+  
+  private void loadFromSwapFile(int vpn, int ppn) {
+    VMKernel.swapFile.read(pageTable[vpn].vpn * Processor.pageSize, Machine.processor().getMemory(),
+        Processor.makeAddress(ppn, 0), Processor.pageSize);
+    VMKernel.availableSwapPages.add(pageTable[vpn].vpn);
+    updatePageTableEntry(vpn, ppn, false, true);
+  }
+
+  private void loadFromCoff(CoffSection section, int sectionPageIndex, int vpn, int ppn) {
+    section.loadPage(sectionPageIndex, ppn);
+    updatePageTableEntry(vpn, ppn, section.isReadOnly(), false);
+  }
+
+  private void loadFromStack(int vpn, int ppn) {
+    // Get the memory array from the machine's processor
+    byte[] memory = Machine.processor().getMemory();
+
+    // Calculate the start address of the physical page
+    int startAddr = Processor.makeAddress(ppn, 0);
+
+    // Fill the entire page with zeros
+    Arrays.fill(memory, startAddr, startAddr + Processor.pageSize, (byte) 0);
+
+    // Update the page table entry for this virtual page number (vpn)
+    updatePageTableEntry(vpn, ppn, false, false); // The page is writable (not read-only)
+  }
+
+  // clock algorithm
+  private int clockAlgorithm() {
+    while (true) {
+      // Check the current victim page in the circular list (clock)
+      TranslationEntry currentEntry = VMKernel.IPT[VMKernel.victimIndex].entry;
+
+      // If the page is not in use (used == false), it's a candidate for eviction
+      if (!currentEntry.used) {
+        // If the page is not pinned and not used recently, select it as the victim
+        if (!VMKernel.IPT[VMKernel.victimIndex].pin) {
+          int victimPPN = currentEntry.ppn; // Physical Page Number of the victim
           VMKernel.victimIndex = (VMKernel.victimIndex + 1) % Machine.processor().getNumPhysPages();
-          if (VMKernel.IPT[toEvict].entry.dirty) {
-            int spn = 0;
-            if (!VMKernel.availableSwapPages.isEmpty()) {
-              spn = VMKernel.availableSwapPages.removeLast();
-            } else {
-              spn = VMKernel.swapCnt;
-              VMKernel.swapCnt++;
-            }
-            VMKernel.swapFile.write(spn * Processor.pageSize, Machine.processor().getMemory(),
-                Processor.makeAddress(VMKernel.IPT[toEvict].entry.ppn, 0), Processor.pageSize);
-
-            VMKernel.IPT[toEvict].entry.vpn = spn;
-            // swap out
-          }
-          VMKernel.IPT[toEvict].process.used_pages.remove(new Integer(VMKernel.IPT[toEvict].entry.ppn));
-          VMKernel.IPT[toEvict].entry.valid = false;
-          ppn = VMKernel.IPT[toEvict].entry.ppn;
+          return victimPPN;
         }
-        used_pages.add(ppn);
-        if (!pageTable[vpn].dirty) {
-          // fill with 000000???????????????
-          byte[] data = new byte[Processor.pageSize];
-          for (int j = 0; j < data.length; j++) {
-            data[j] = 0;
-          }
-          System.arraycopy(data, 0, Machine.processor().getMemory(), Processor.makeAddress(ppn, 0), Processor.pageSize);
-          pageTable[vpn] = new TranslationEntry(vpn, ppn, true, false, true, false);
-        } else {
-          // swap in
-          VMKernel.swapFile.read(pageTable[vpn].vpn * Processor.pageSize, Machine.processor().getMemory(),
-              Processor.makeAddress(ppn, 0), Processor.pageSize);
-          VMKernel.availableSwapPages.add(pageTable[vpn].vpn);
-          pageTable[vpn] = new TranslationEntry(vpn, ppn, true, false, true, true);
-        }
-        VMKernel.IPT[ppn].process = this;
-        VMKernel.IPT[ppn].entry = pageTable[vpn];
+      } else {
+        // If the page was recently used, set used to false and move to the next page
+        currentEntry.used = false;
       }
-    }
 
-    // System.out.println("process id: " + this.process_id);
-    // for(int i = 0; i < used_pages.size(); i++){
-    // System.out.print(used_pages.get(i));
-    // }
-    VMKernel.lock.release();
+      // Move to the next page in the circular list
+      VMKernel.victimIndex = (VMKernel.victimIndex + 1) % Machine.processor().getNumPhysPages();
+    }
+  }
+
+  // If the victim is dirty, write it to the swap file
+  private void handleDirtyPage(int toEvict) {
+    TranslationEntry entry = VMKernel.IPT[toEvict].entry;
+
+    if (entry.dirty) {
+      // Check if there are available swap pages
+      // If no swap pages are available, use the next swap page index and increment
+      // the swapped counter
+      int swapPageIndex = VMKernel.availableSwapPages.isEmpty() ? (VMKernel.swapCnt++)
+          : (VMKernel.availableSwapPages.removeLast());
+
+      int physicalAddr = Processor.makeAddress(entry.ppn, 0);
+      byte[] memory = Machine.processor().getMemory();
+
+      // Write the page to the swap file
+      VMKernel.swapFile.write(swapPageIndex * Processor.pageSize, memory, physicalAddr, Processor.pageSize);
+      entry.vpn = swapPageIndex; // Update the vpn to swapPageIndex
+    }
+  }
+
+  private void updatePageTableEntry(int vpn, int ppn, boolean isReadOnly, boolean dirty) {
+    // Create a new translation entry for the page table
+    pageTable[vpn] = new TranslationEntry(vpn, ppn, true, isReadOnly, true, dirty);
   }
 
   /**
@@ -476,6 +493,7 @@ public class VMProcess extends UserProcess {
         break;
     }
   }
+
   public LinkedList<Integer> used_pages;
 
   private static final int pageSize = Processor.pageSize;
@@ -483,5 +501,5 @@ public class VMProcess extends UserProcess {
   private static final char dbgProcess = 'a';
 
   private static final char dbgVM = 'v';
-  
+
 }
